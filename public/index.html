@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgriSmart IoT - Professional Agriculture Monitoring & ESP32-CAM Station</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              200: '#bbf7d0',
+              300: '#86efac',
+              400: '#4ade80',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Chart.js for real-time graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom CSS Design System -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-950 text-slate-100 font-['Plus_Jakarta_Sans'] min-h-screen antialiased selection:bg-brand-500 selection:text-white relative overflow-hidden">
+
+  <!-- Atmospheric Background Agriculture Image & Gradient Overlay -->
+  <div class="agri-bg-overlay"></div>
+
+  <!-- ========================================================================= -->
+  <!-- 1. LOGIN / AUTHENTICATION MODAL                                           -->
+  <!-- ========================================================================= -->
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md transition-all duration-300">
+    <div class="bg-slate-900/90 border border-slate-700/80 rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+      <div class="absolute -top-24 -right-24 w-48 h-48 bg-brand-500/25 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-emerald-400 text-white text-3xl shadow-xl shadow-brand-500/30 mb-3 border border-emerald-400/30">
+          <i class="fa-solid fa-seedling"></i>
+        </div>
+        <h2 class="text-2xl font-extrabold tracking-tight text-white">AgriSmart IoT Portal</h2>
+        <p class="text-slate-400 text-xs mt-1 font-medium">Smart Agriculture, ESP8266 Telemetry & ESP32-CAM Field Vision</p>
+      </div>
+
+      <div class="bg-slate-800/80 p-1 rounded-xl flex mb-5 border border-slate-700/60 text-xs">
+        <button type="button" id="tabFarmer" class="flex-1 py-2 rounded-lg font-semibold text-center transition bg-brand-600 text-white shadow">Farmer Admin</button>
+        <button type="button" id="tabGuest" class="flex-1 py-2 rounded-lg font-medium text-center transition text-slate-400 hover:text-white">Field Operator</button>
+      </div>
+
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Farmer Email / Station ID</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+              <i class="fa-solid fa-user-gear text-sm"></i>
+            </span>
+            <input type="text" id="loginEmail" required value="farmer@agrismart.com"
+              class="w-full bg-slate-800/90 border border-slate-700 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl pl-10 pr-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Security Passcode</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+              <i class="fa-solid fa-lock text-sm"></i>
+            </span>
+            <input type="password" id="loginPass" required value="esp8266farm"
+              class="w-full bg-slate-800/90 border border-slate-700 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition">
+            <button type="button" id="togglePassVisibility" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-white">
+              <i class="fa-regular fa-eye text-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-slate-400">
+          <label class="flex items-center space-x-2 cursor-pointer">
+            <input type="checkbox" checked class="rounded border-slate-700 text-brand-600 focus:ring-brand-500 bg-slate-800">
+            <span>Remember Station</span>
+          </label>
+          <span class="text-brand-400 font-semibold cursor-pointer hover:underline" id="quickBypassBtn">Instant 1-Click Access</span>
+        </div>
+
+        <button type="submit"
+          class="w-full py-3.5 px-4 rounded-xl font-bold bg-gradient-to-r from-brand-600 to-emerald-500 hover:from-brand-500 hover:to-emerald-400 text-white shadow-xl shadow-brand-600/30 transition transform hover:-translate-y-0.5 active:translate-y-0 text-sm flex items-center justify-center space-x-2">
+          <span>Enter Agriculture Dashboard</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </form>
+
+      <div class="mt-6 pt-4 border-t border-slate-800 text-center">
+        <div class="inline-flex items-center space-x-2 text-[11px] text-slate-400">
+          <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
+          <span>ESP8266 Sensors + ESP32-CAM Field Camera Active</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 2. FLAME HAZARD CRITICAL ALERT BANNER                                     -->
+  <!-- ========================================================================= -->
+  <div id="flameEmergencyBanner" class="hidden fixed top-0 inset-x-0 z-40 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white px-4 py-3 shadow-2xl animate-pulse">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl animate-bounce">
+          <i class="fa-solid fa-fire text-amber-200"></i>
+        </div>
+        <div>
+          <div class="font-extrabold text-sm sm:text-base tracking-wide flex items-center gap-2">
+            CRITICAL EMERGENCY: FLAME / FIRE DETECTED BY SENSOR!
+            <span class="bg-red-950/80 text-red-200 text-xs px-2 py-0.5 rounded font-mono">SECTOR A1</span>
+          </div>
+          <p class="text-xs text-rose-100">Flame sensor (GPIO 14) triggered high alert. Water pump safety cutoff engaged.</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button id="silenceAlarmBtn" class="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition border border-white/30">
+          <i class="fa-solid fa-volume-xmark mr-1"></i> Silence Audio
+        </button>
+        <button id="dismissFlameAlertBtn" class="bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg transition shadow">
+          Acknowledge & Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 3. MAIN DASHBOARD APPLICATION WRAPPER                                     -->
+  <!-- ========================================================================= -->
+  <div class="flex h-screen overflow-hidden relative z-10">
+    
+    <!-- SIDEBAR NAVIGATION -->
+    <aside id="sidebar" class="w-72 glass-sidebar flex flex-col justify-between z-30 transition-all duration-300 -translate-x-full md:translate-x-0 fixed md:static inset-y-0 left-0">
+      <div>
+        <!-- Brand Header -->
+        <div class="p-5 border-b border-emerald-500/10 flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-white text-xl shadow-md shadow-brand-500/25 border border-emerald-300/30">
+              <i class="fa-solid fa-leaf"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="font-extrabold text-lg text-white tracking-tight">AgriSmart</span>
+                <span class="text-[10px] bg-brand-500/20 text-brand-300 border border-brand-500/30 px-1.5 py-0.5 rounded-md font-mono font-bold">IoT</span>
+              </div>
+              <p class="text-[11px] text-slate-400 font-medium">ESP8266 + ESP32-CAM Station</p>
+            </div>
+          </div>
+          <button id="closeSidebarBtn" class="md:hidden text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+
+        <!-- Hardware Status Widget (ESP8266 & ESP32-CAM) -->
+        <div class="mx-3.5 my-3.5 p-3 rounded-2xl bg-slate-900/60 border border-emerald-500/15 backdrop-blur-md text-xs space-y-2 shadow-inner">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-microchip text-brand-400 text-xs"></i>
+              <span class="text-slate-300 font-medium">ESP8266 Sensors</span>
+            </div>
+            <span id="espStatusBadge" class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> ONLINE
+            </span>
+          </div>
+          <div class="flex items-center justify-between pt-1.5 border-t border-slate-800/80">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-camera-retro text-blue-400 text-xs"></i>
+              <span class="text-slate-300 font-medium">ESP32-CAM Video</span>
+            </div>
+            <span id="espCamStatusBadge" class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span> READY
+            </span>
+          </div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="px-3.5 space-y-1.5">
+          <div class="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Agricultural Navigation</div>
+          
+          <button data-nav="dashboard" class="nav-item active w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition group">
+            <div class="flex items-center space-x-3">
+              <div class="w-7 h-7 rounded-lg bg-brand-500/15 text-brand-400 flex items-center justify-center text-xs group-hover:scale-110 transition">
+                <i class="fa-solid fa-chart-pie"></i>
+              </div>
+              <span class="font-medium text-white">Field Dashboard</span>
+            </div>
+            <span class="whitespace-nowrap text-[10px] bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded-full font-mono font-semibold">Sensors</span>
+          </button>
+
+          <button data-nav="disease" class="nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-300 hover:text-white transition group">
+            <div class="flex items-center space-x-3">
+              <div class="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-xs group-hover:scale-110 transition">
+                <i class="fa-solid fa-microscope"></i>
+              </div>
+              <span class="font-medium">Crop Disease Monitor</span>
+            </div>
+            <span class="whitespace-nowrap text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-mono font-semibold">Farmer AI</span>
+          </button>
+
+          <button data-nav="surveillance" class="nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-300 hover:text-white transition group">
+            <div class="flex items-center space-x-3">
+              <div class="w-7 h-7 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center text-xs group-hover:scale-110 transition">
+                <i class="fa-solid fa-camera"></i>
+              </div>
+              <span class="font-medium">ESP32-CAM Live View</span>
+            </div>
+            <span class="whitespace-nowrap text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full font-mono font-semibold">Live Cam</span>
+          </button>
+
+          <button data-nav="weather" class="nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-300 hover:text-white transition group">
+            <div class="flex items-center space-x-3">
+              <div class="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center text-xs group-hover:scale-110 transition">
+                <i class="fa-solid fa-cloud-sun-rain"></i>
+              </div>
+              <span class="font-medium">10-Day Weather</span>
+            </div>
+            <span class="whitespace-nowrap text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-mono font-semibold">Forecast</span>
+          </button>
+
+          <button data-nav="hardware" class="nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-300 hover:text-white transition group">
+            <div class="flex items-center space-x-3">
+              <div class="w-7 h-7 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center text-xs group-hover:scale-110 transition">
+                <i class="fa-solid fa-microchip"></i>
+              </div>
+              <span class="font-medium">Hardware & Code</span>
+            </div>
+            <span class="whitespace-nowrap text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-mono font-semibold">Firmware</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- User Footer Card -->
+      <div class="p-4 border-t border-emerald-500/10 bg-slate-950/60">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-500 to-teal-400 flex items-center justify-center font-bold text-white text-xs shadow-md border border-white/20">
+              <span id="userAvatarText">FA</span>
+            </div>
+            <div>
+              <div id="userDisplayName" class="text-xs font-bold text-white tracking-wide">FARMER RAMESH</div>
+              <div class="text-[10px] text-slate-400">Sector Green-01</div>
+            </div>
+          </div>
+          <button id="logoutBtn" title="Logout" class="w-8 h-8 rounded-lg bg-slate-900 hover:bg-red-500/20 hover:text-red-400 text-slate-400 flex items-center justify-center transition border border-slate-800">
+            <i class="fa-solid fa-right-from-bracket text-xs"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN VIEW AREA -->
+    <div class="flex-1 flex flex-col h-screen overflow-hidden">
+      
+      <!-- TOP NAVBAR -->
+      <header class="h-16 glass-header px-4 sm:px-6 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center space-x-3">
+          <button id="openSidebarBtn" class="md:hidden text-slate-300 hover:text-white p-2 rounded-xl bg-slate-900/80 border border-slate-800">
+            <i class="fa-solid fa-bars text-base"></i>
+          </button>
+          
+          <div>
+            <h2 id="currentPageTitle" class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Agriculture Field Dashboard</span>
+            </h2>
+            <p id="currentPageSubtitle" class="text-[11px] text-slate-300 hidden sm:block">Real-time ESP8266 telemetry, soil condition & water pump automation</p>
+          </div>
+        </div>
+
+        <!-- Top Right Actions -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <!-- Audio Siren Toggle -->
+          <button id="audioAlarmToggle" title="Audio Alarm Siren" class="px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-medium flex items-center gap-2 transition shadow-sm">
+            <i class="fa-solid fa-volume-high text-brand-400"></i>
+            <span class="hidden lg:inline">Audio Siren: <b id="audioStatusText" class="text-emerald-400 font-mono">ON</b></span>
+          </button>
+
+          <!-- Test Simulator Toggle -->
+          <button id="toggleSimulatorDrawerBtn" class="px-3 py-1.5 rounded-xl bg-purple-950/70 hover:bg-purple-900/80 border border-purple-700/70 text-purple-200 text-xs font-bold flex items-center gap-2 transition shadow-md">
+            <i class="fa-solid fa-sliders text-purple-400"></i>
+            <span>Test Simulator</span>
+          </button>
+
+          <!-- Emergency Cutoff Button -->
+          <button id="topEmergencyStopBtn" class="px-3.5 py-1.5 rounded-xl bg-red-600/30 hover:bg-red-600 border border-red-500/50 text-red-200 hover:text-white text-xs font-bold transition flex items-center gap-2 shadow-md">
+            <i class="fa-solid fa-power-off text-red-400"></i>
+            <span class="hidden sm:inline">Emergency Cutoff</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- VIEWS CONTAINER -->
+      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-7 space-y-6">
+
+        <!-- ========================================================================= -->
+        <!-- VIEW 1: FIELD SENSORS & WATER PUMP DASHBOARD                             -->
+        <!-- ========================================================================= -->
+        <div id="view-dashboard" class="app-view space-y-6">
+          
+          <!-- TOP 4 SENSOR METRIC CARDS -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            
+            <!-- 1. DHT11 TEMPERATURE -->
+            <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between group">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">DHT11 Temperature</span>
+                  <div class="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-sm border border-amber-500/25">
+                    <i class="fa-solid fa-temperature-half"></i>
+                  </div>
+                </div>
+                <div class="flex items-baseline justify-between mt-1">
+                  <div class="flex items-baseline space-x-1">
+                    <span id="tempValue" class="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight">29.4</span>
+                    <span class="text-lg text-amber-400 font-bold">°C</span>
+                  </div>
+                  <span id="tempValueFahrenheit" class="px-2.5 py-0.5 rounded-lg bg-slate-800/90 border border-slate-700/80 text-[11px] font-mono text-slate-200 font-bold">84.9 °F</span>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-800/80">
+                <div class="flex items-center justify-between text-xs mb-2">
+                  <span id="tempStatusBadge" class="inline-flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px]">
+                    <i class="fa-solid fa-circle-check text-[10px]"></i> Optimal (20–30°C)
+                  </span>
+                  <span class="text-slate-300 font-mono text-[11px]">GPIO 4 (D2)</span>
+                </div>
+                <div class="w-full bg-slate-800/90 rounded-full h-1.5 overflow-hidden">
+                  <div id="tempBar" class="bg-gradient-to-r from-amber-500 to-orange-500 h-1.5 rounded-full transition-all duration-500" style="width: 58%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. DHT11 HUMIDITY -->
+            <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between group">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">DHT11 Humidity</span>
+                  <div class="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center text-sm border border-blue-500/25">
+                    <i class="fa-solid fa-droplet"></i>
+                  </div>
+                </div>
+                <div class="flex items-baseline justify-between mt-1">
+                  <div class="flex items-baseline space-x-1">
+                    <span id="humidityValue" class="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight">60.7</span>
+                    <span class="text-lg text-blue-400 font-bold">%</span>
+                  </div>
+                  <span id="dewPointDisplay" class="px-2.5 py-0.5 rounded-lg bg-slate-800/90 border border-slate-700/80 text-[11px] font-mono text-slate-200 font-bold">Dew: 21.0°C</span>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-800/80">
+                <div class="flex items-center justify-between text-xs mb-2">
+                  <span id="humidityStatusBadge" class="inline-flex items-center gap-1.5 text-blue-400 font-semibold text-[11px]">
+                    <i class="fa-solid fa-cloud text-[10px]"></i> Balanced Moisture
+                  </span>
+                  <span class="text-slate-300 font-mono text-[11px]">Single Bus</span>
+                </div>
+                <div class="w-full bg-slate-800/90 rounded-full h-1.5 overflow-hidden">
+                  <div id="humidityBar" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-1.5 rounded-full transition-all duration-500" style="width: 61%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. CAPACITIVE SOIL MOISTURE -->
+            <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between group">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Soil Moisture (Capacitive)</span>
+                  <div class="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-sm border border-emerald-500/25">
+                    <i class="fa-solid fa-plant-wilt"></i>
+                  </div>
+                </div>
+                <div class="flex items-baseline justify-between mt-1">
+                  <div class="flex items-baseline space-x-1">
+                    <span id="soilValue" class="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight">42.0</span>
+                    <span class="text-lg text-emerald-400 font-bold">%</span>
+                  </div>
+                  <span id="soilRawDisplay" class="px-2.5 py-0.5 rounded-lg bg-slate-800/90 border border-slate-700/80 text-[11px] font-mono text-slate-200 font-bold">ADC: 560</span>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-800/80">
+                <div class="flex items-center justify-between text-xs mb-2">
+                  <span id="soilStatusBadge" class="inline-flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px]">
+                    <i class="fa-solid fa-check-double text-[10px]"></i> Optimal Root Zone
+                  </span>
+                  <span class="text-slate-300 font-mono text-[11px]">Analog A0</span>
+                </div>
+                <div class="w-full bg-slate-800/90 rounded-full h-1.5 overflow-hidden">
+                  <div id="soilBar" class="bg-gradient-to-r from-emerald-500 to-brand-400 h-1.5 rounded-full transition-all duration-500" style="width: 42%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. FLAME SENSOR SAFETY -->
+            <div id="flameStatusCard" class="glass-panel rounded-2xl p-5 flex flex-col justify-between transition-all duration-300">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Flame / Fire Sensor</span>
+                  <div id="flameIconContainer" class="w-8 h-8 rounded-xl bg-slate-800/80 text-emerald-400 flex items-center justify-center text-sm border border-slate-700/80">
+                    <i class="fa-solid fa-shield-halved"></i>
+                  </div>
+                </div>
+                <div class="flex items-baseline justify-between mt-1">
+                  <span id="flameText" class="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono tracking-wide">SECURE</span>
+                  <span class="px-2.5 py-0.5 rounded-lg bg-slate-800/90 border border-slate-700/80 text-[11px] font-mono text-slate-200 font-bold">GPIO 14 (D5)</span>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-800/80">
+                <div class="flex items-center justify-between text-xs mb-2">
+                  <span id="flameDescBadge" class="inline-flex items-center gap-1.5 text-slate-300 text-[11px] font-medium">
+                    <i class="fa-solid fa-circle-check text-emerald-400 text-[10px]"></i> No Flame Detected
+                  </span>
+                  <span class="text-emerald-400/90 font-mono text-[10px] flex items-center gap-1">
+                    <i class="fa-solid fa-lock text-[9px]"></i> Auto-Cutoff
+                  </span>
+                </div>
+                <div class="w-full bg-slate-800/90 rounded-full h-1.5 overflow-hidden">
+                  <div class="bg-emerald-500 h-1.5 rounded-full w-full"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- MIDDLE ROW: WATER PUMP CONTROLLER & LIVE TELEMETRY GRAPH -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            
+            <!-- WATER PUMP CONTROLLER (4 cols) -->
+            <div class="lg:col-span-4 glass-panel rounded-2xl p-6 flex flex-col justify-between shadow-xl">
+              <div>
+                <!-- Header with Mode Selector -->
+                <div class="flex items-center justify-between pb-3.5 border-b border-emerald-500/15">
+                  <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center text-sm border border-blue-500/25">
+                      <i class="fa-solid fa-faucet-drip"></i>
+                    </div>
+                    <div>
+                      <h3 class="font-bold text-sm text-white">Water Pump Controller</h3>
+                      <p class="text-[11px] text-slate-300 font-mono">ESP8266 GPIO 12 (D6)</p>
+                    </div>
+                  </div>
+                  <!-- Mode Switch -->
+                  <div class="bg-slate-900/90 p-1 rounded-xl flex border border-slate-700/80 text-xs font-semibold">
+                    <button id="pumpModeAuto" class="px-2.5 py-1 rounded-lg bg-brand-600 text-white shadow font-bold">AUTO</button>
+                    <button id="pumpModeManual" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium">MANUAL</button>
+                  </div>
+                </div>
+
+                <!-- Big Tactile Pump Switch -->
+                <div class="my-6 text-center">
+                  <div id="pumpVisualOrb" class="w-32 h-32 mx-auto rounded-full flex flex-col items-center justify-center cursor-pointer transition-all duration-300 group">
+                    <i id="pumpVisualIcon" class="fa-solid fa-power-off text-3xl text-slate-500 mb-1 transition group-hover:scale-110"></i>
+                    <span id="pumpVisualState" class="font-mono font-extrabold text-xs text-slate-400 tracking-wider">OFF</span>
+                  </div>
+                  <p class="text-xs text-slate-400 mt-3 font-medium">Click dial to toggle irrigation pump manually</p>
+                </div>
+
+                <!-- Statistics Grid -->
+                <div class="grid grid-cols-2 gap-3 bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 text-xs">
+                  <div>
+                    <span class="text-slate-300 block text-[11px]">Today's Water:</span>
+                    <span id="pumpWaterToday" class="font-mono font-bold text-white text-sm">85.5 Liters</span>
+                  </div>
+                  <div>
+                    <span class="text-slate-300 block text-[11px]">Total Runtime:</span>
+                    <span id="pumpRuntime" class="font-mono font-bold text-white text-sm">142 Mins</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Automated Threshold Sliders -->
+              <div class="mt-6 pt-4 border-t border-emerald-500/15 space-y-3">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-semibold text-slate-300">Auto Turn ON Threshold:</span>
+                  <span class="text-brand-400 font-mono font-bold">&lt; <span id="threshMinLabel">35</span>%</span>
+                </div>
+                <input type="range" id="threshMinSlider" min="15" max="55" value="35"
+                  class="w-full accent-brand-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+
+                <div class="flex items-center justify-between text-xs pt-1">
+                  <span class="font-semibold text-slate-300">Auto Stop Target:</span>
+                  <span class="text-blue-400 font-mono font-bold">&gt; <span id="threshMaxLabel">70</span>%</span>
+                </div>
+                <input type="range" id="threshMaxSlider" min="50" max="90" value="70"
+                  class="w-full accent-blue-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+              </div>
+            </div>
+
+            <!-- LIVE TELEMETRY GRAPH (8 cols) -->
+            <div class="lg:col-span-8 glass-panel rounded-2xl p-6 flex flex-col justify-between shadow-xl">
+              <div>
+                <!-- Header with Legend Pills -->
+                <div class="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-emerald-500/15">
+                  <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-sm border border-emerald-500/25">
+                      <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div>
+                      <h3 class="font-bold text-sm text-white">Live Environmental Telemetry (DHT11 & Soil Moisture)</h3>
+                      <p class="text-[11px] text-slate-300">Real-time dynamic streams from ESP8266 node</p>
+                    </div>
+                  </div>
+                  <!-- Legends -->
+                  <div class="flex items-center space-x-2 text-xs">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/25 font-semibold text-[11px]">
+                      <span class="w-2 h-2 rounded-full bg-amber-400"></span> Temp (°C)
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300 border border-blue-500/25 font-semibold text-[11px]">
+                      <span class="w-2 h-2 rounded-full bg-blue-400"></span> Humidity (%)
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 font-semibold text-[11px]">
+                      <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Soil (%)
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Canvas Chart Area -->
+                <div class="relative h-64 sm:h-72 w-full mt-4">
+                  <canvas id="sensorHistoryChart"></canvas>
+                </div>
+              </div>
+
+              <!-- Bottom Agronomic Advisor Bar -->
+              <div class="mt-4 p-3 rounded-xl bg-slate-950/70 border border-emerald-500/15 flex items-center justify-between text-xs">
+                <div class="flex items-center space-x-2.5">
+                  <i class="fa-solid fa-circle-info text-brand-400"></i>
+                  <span id="agriRuleAdvisor" class="text-slate-300 font-medium">Soil moisture optimal. Drip irrigation paused to preserve groundwater.</span>
+                </div>
+                <span class="text-slate-400 font-mono text-[11px] hidden sm:inline">ESP8266 Sync: 3s</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- BOTTOM SECTION: SYSTEM EVENT & SAFETY ALERT LOGS -->
+          <div class="glass-panel rounded-2xl p-6 shadow-xl">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-emerald-500/15">
+              <div class="flex items-center space-x-2.5">
+                <div class="w-7 h-7 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center text-xs">
+                  <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-sm text-white">Station Event & Safety Alert Logs</h3>
+                  <p class="text-[11px] text-slate-400">Chronological history of pump activities, fire sensor triggers and WiFi syncs</p>
+                </div>
+              </div>
+              <button id="clearAlertsBtn" class="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 transition border border-slate-700">
+                Clear Log
+              </button>
+            </div>
+            
+            <div id="alertsContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+          </div>
+
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- VIEW 2: CROP & LEAF DISEASE DETECTOR (FARMER-FRIENDLY & ACCURATE)          -->
+        <!-- ========================================================================= -->
+        <div id="view-disease" class="app-view hidden space-y-6">
+          
+          <div class="glass-panel rounded-2xl p-6 shadow-xl border border-emerald-500/20">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/15 px-2.5 py-1 rounded-full border border-emerald-500/25">
+                  <i class="fa-solid fa-microscope mr-1"></i> Farmer AI Pathology Diagnostic Engine
+                </span>
+                <h2 class="text-2xl font-extrabold text-white mt-2">Crop & Leaf Disease Diagnostic Center</h2>
+                <p class="text-slate-300 text-xs mt-1">
+                  Click a photo of diseased leaves or fruits. The AI detects pathogens, highlights affected lesions, and gives plain-talk farmer recipes with exact tank dosages.
+                </p>
+              </div>
+              <div class="flex items-center space-x-2 text-xs">
+                <span class="bg-slate-800/90 border border-slate-700 px-3 py-1.5 rounded-xl text-slate-300">
+                  <i class="fa-solid fa-volume-high text-emerald-400 mr-1.5"></i> Audio Doctor Advisory Enabled
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Input Section: Camera Viewfinder / Upload Box -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left: Capture / Upload Panel (6 cols) -->
+            <div class="lg:col-span-6 glass-panel rounded-2xl p-6 shadow-xl space-y-5">
+              
+              <div class="flex items-center justify-between border-b border-emerald-500/15 pb-3">
+                <div class="flex space-x-2">
+                  <button id="modeUploadBtn" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-brand-600 text-white shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-upload"></i> Upload Leaf
+                  </button>
+                  <button id="modeCameraBtn" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-400 hover:text-white transition flex items-center gap-2">
+                    <i class="fa-solid fa-camera"></i> Click Photo
+                  </button>
+                </div>
+                <!-- Crop Selector -->
+                <select id="cropSelector" class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white outline-none focus:border-brand-500">
+                  <option value="any">🌾 Crop: Any / Auto Detect</option>
+                  <option value="Tomato">🍅 Tomato (टमाटर)</option>
+                  <option value="Potato">🥔 Potato (आलू)</option>
+                  <option value="Rice">🌾 Rice / Paddy (धान)</option>
+                  <option value="Wheat">🌾 Wheat (गेहूं)</option>
+                  <option value="Cotton">🌱 Cotton (कपास)</option>
+                  <option value="Chilli">🌶️ Chilli (मिर्च)</option>
+                  <option value="Corn">🌽 Corn (मक्का)</option>
+                  <option value="Apple">🍎 Apple (सेब)</option>
+                  <option value="Cucumber">🥒 Cucumber (खीरा)</option>
+                </select>
+              </div>
+
+              <!-- Upload Drag-Drop Dropzone with Canvas Lesion Overlay -->
+              <div id="dropzoneArea" class="border-2 border-dashed border-slate-700 hover:border-brand-500 rounded-2xl p-6 text-center cursor-pointer transition relative group bg-slate-950/40">
+                <input type="file" id="leafFileInput" accept="image/*" class="hidden">
+                <div id="uploadPlaceholder" class="space-y-3 py-8">
+                  <div class="w-16 h-16 rounded-2xl bg-brand-500/10 group-hover:bg-brand-500/20 text-brand-400 flex items-center justify-center text-3xl mx-auto transition">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                  </div>
+                  <div>
+                    <p class="font-bold text-sm text-white">Click or drag & drop leaf image here</p>
+                    <p class="text-xs text-slate-400 mt-1">Supports Mobile Photos, JPG, PNG, WEBP</p>
+                  </div>
+                </div>
+
+                <div id="previewContainer" class="hidden relative max-h-80 mx-auto overflow-hidden rounded-xl">
+                  <img id="imagePreview" src="" alt="Selected leaf" class="w-full h-auto max-h-80 object-contain rounded-xl mx-auto shadow-md">
+                  <canvas id="lesionOverlayCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                  
+                  <button id="removeImageBtn" class="absolute top-2 right-2 bg-red-600/90 text-white w-8 h-8 rounded-full flex items-center justify-center text-xs hover:bg-red-500 shadow z-10">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+
+                  <div id="lesionDetectedBadge" class="hidden absolute bottom-2 left-2 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-mono text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 z-10">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span>AI SPOTTED LESION RETICLES ACTIVE</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Live Camera Viewfinder -->
+              <div id="cameraViewfinderArea" class="hidden border border-slate-700 rounded-2xl p-4 bg-slate-950 relative overflow-hidden">
+                <div class="relative rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center">
+                  <video id="webcamVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                  <div class="absolute inset-8 border border-white/30 rounded-xl pointer-events-none flex items-center justify-center">
+                    <div class="w-8 h-8 border-t-2 border-l-2 border-brand-400 absolute top-0 left-0"></div>
+                    <div class="w-8 h-8 border-t-2 border-r-2 border-brand-400 absolute top-0 right-0"></div>
+                    <div class="w-8 h-8 border-b-2 border-l-2 border-brand-400 absolute bottom-0 left-0"></div>
+                    <div class="w-8 h-8 border-b-2 border-r-2 border-brand-400 absolute bottom-0 right-0"></div>
+                    <span class="text-white/60 text-xs font-mono bg-black/50 px-2 py-0.5 rounded">Center infected leaf</span>
+                  </div>
+                </div>
+                <canvas id="cameraCanvas" class="hidden"></canvas>
+                <div class="flex items-center justify-center gap-3 mt-4">
+                  <button id="snapPhotoBtn" class="bg-brand-600 hover:bg-brand-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-brand-500/25 transition text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-camera"></i> Snap Photo Now
+                  </button>
+                  <button id="stopCameraBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-2.5 rounded-xl transition text-xs">
+                    Cancel Camera
+                  </button>
+                </div>
+              </div>
+
+              <!-- Action button -->
+              <div>
+                <button id="runDiagnosisBtn" class="w-full py-3.5 px-4 rounded-xl font-extrabold bg-gradient-to-r from-brand-600 via-emerald-500 to-teal-500 hover:from-brand-500 hover:to-emerald-400 text-white shadow-xl shadow-brand-600/25 transition text-sm flex items-center justify-center space-x-2">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i>
+                  <span>Diagnose Leaf Disease & Get Treatment</span>
+                </button>
+              </div>
+
+              <!-- Pre-loaded Specimens -->
+              <div class="pt-4 border-t border-emerald-500/15">
+                <span class="text-xs font-semibold text-slate-400 block mb-2.5">Farmer Quick-Test Specimens:</span>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button class="sample-leaf-btn px-2.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 hover:border-brand-500 text-left transition" data-id="tomato_early_blight" data-crop="Tomato">
+                    <div class="text-[11px] font-bold text-white">Tomato Leaf</div>
+                    <div class="text-[10px] text-amber-400 truncate">Early Blight (झुलसा)</div>
+                  </button>
+                  <button class="sample-leaf-btn px-2.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 hover:border-brand-500 text-left transition" data-id="tomato_late_blight" data-crop="Tomato">
+                    <div class="text-[11px] font-bold text-white">Tomato Leaf</div>
+                    <div class="text-[10px] text-rose-400 truncate">Late Blight (पछेती)</div>
+                  </button>
+                  <button class="sample-leaf-btn px-2.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 hover:border-brand-500 text-left transition" data-id="rice_leaf_blast" data-crop="Rice">
+                    <div class="text-[11px] font-bold text-white">Paddy / Rice</div>
+                    <div class="text-[10px] text-orange-400 truncate">Rice Blast (झोंका)</div>
+                  </button>
+                  <button class="sample-leaf-btn px-2.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 hover:border-brand-500 text-left transition" data-id="wheat_yellow_rust" data-crop="Wheat">
+                    <div class="text-[11px] font-bold text-white">Wheat Leaf</div>
+                    <div class="text-[10px] text-yellow-400 truncate">Yellow Rust (रतुआ)</div>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Right: AI Diagnostic Result Card (6 cols) -->
+            <div class="lg:col-span-6 glass-panel rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+              
+              <div id="diagBlankState" class="text-center py-16 my-auto">
+                <div class="w-20 h-20 rounded-full bg-slate-800/80 border border-slate-700 mx-auto flex items-center justify-center text-3xl text-slate-500 mb-4">
+                  <i class="fa-solid fa-microscope"></i>
+                </div>
+                <h4 class="font-bold text-white text-base">Awaiting Crop Leaf Specimen</h4>
+                <p class="text-xs text-slate-400 max-w-xs mx-auto mt-1.5">Upload a photo of your affected plant or pick a test specimen on the left, then click Diagnose.</p>
+              </div>
+
+              <div id="diagLoadingState" class="hidden text-center py-20 my-auto">
+                <div class="relative w-24 h-24 mx-auto mb-4">
+                  <div class="w-full h-full rounded-full border-4 border-brand-500/20 border-t-brand-400 animate-spin"></div>
+                  <div class="absolute inset-0 flex items-center justify-center text-brand-400 text-2xl">
+                    <i class="fa-solid fa-leaf animate-pulse"></i>
+                  </div>
+                </div>
+                <h4 class="font-bold text-white text-base">AI Vision Examining Leaf Cells & Lesions...</h4>
+                <p class="text-xs text-slate-400 mt-1">Cross-referencing fungal spores, chlorosis rings, and live field microclimate.</p>
+              </div>
+
+              <!-- Result Container -->
+              <div id="diagResultContainer" class="hidden space-y-4">
+                
+                <!-- Result Header & Confidence -->
+                <div class="pb-3 border-b border-emerald-500/15 flex items-start justify-between">
+                  <div>
+                    <span id="resRegionalName" class="text-xs font-bold text-emerald-400 block font-mono">टमाटर अगेती झुलसा</span>
+                    <h3 id="resDiseaseName" class="text-xl font-extrabold text-white">Early Blight (Alternaria solani)</h3>
+                    <div class="flex items-center gap-2 mt-1">
+                      <span id="resSeverityBadge" class="text-[10px] font-bold px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Moderate Severity</span>
+                      <span id="resPathogenBadge" class="text-[10px] font-semibold text-slate-400">Pathogen: Fungus</span>
+                    </div>
+                  </div>
+                  
+                  <div class="text-right flex flex-col items-end">
+                    <div class="text-[10px] text-slate-400 uppercase font-bold">Accuracy</div>
+                    <div id="resConfidence" class="text-2xl font-black font-mono text-emerald-400">96.8%</div>
+                    <!-- Audio Voice Readout Button -->
+                    <button id="voiceAdvisoryBtn" class="mt-2 px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition">
+                      <i class="fa-solid fa-volume-high"></i>
+                      <span>Listen to Advice</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Plain Language Farmer Summary Box -->
+                <div class="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
+                  <div class="text-xs font-bold text-amber-300 flex items-center gap-1.5 mb-1">
+                    <i class="fa-solid fa-circle-question"></i>
+                    <span>What is happening to your plant? (समस्या का सारांश)</span>
+                  </div>
+                  <p id="resFarmerSummary" class="text-slate-300 text-xs leading-relaxed">
+                    Lower older leaves are developing concentric dark rings with yellow halos. If untreated, leaves turn brittle and drop off.
+                  </p>
+                  <div class="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                    <span class="text-slate-400 font-semibold">Harvest Risk:</span>
+                    <span id="resYieldRisk" class="text-rose-400 font-mono font-bold">20% - 35% yield loss</span>
+                  </div>
+                </div>
+
+                <!-- Immediate Spray Recipe Box -->
+                <div class="bg-gradient-to-r from-blue-950/40 to-slate-900 p-3.5 rounded-xl border border-blue-800/50">
+                  <div class="text-xs font-bold text-blue-300 flex items-center gap-1.5 mb-1">
+                    <i class="fa-solid fa-spray-can-sparkles"></i>
+                    <span>Immediate Spray Formula (15-Liter Sprayer Pump Tank):</span>
+                  </div>
+                  <p id="resSprayRecipe" class="text-white font-mono text-xs font-medium leading-relaxed">
+                    Mix 30g Mancozeb 75% WP in a 15-Liter sprayer tank (2g/L). Spray under leaves before 10 AM.
+                  </p>
+                </div>
+
+                <!-- Low Cost Organic / Kitchen Home Remedy -->
+                <div class="bg-emerald-950/30 p-3.5 rounded-xl border border-emerald-800/40">
+                  <div class="text-xs font-bold text-emerald-400 flex items-center gap-1.5 mb-1">
+                    <i class="fa-solid fa-leaf"></i>
+                    <span>Low-Cost Organic Alternative (देशी नुस्खा):</span>
+                  </div>
+                  <p id="resOrganicRemedy" class="text-slate-300 text-xs leading-relaxed">
+                    Mix 500ml sour buttermilk (खट्टी छाछ) + 15g copper sulfate in 15L water, or spray 5% Neem extract.
+                  </p>
+                </div>
+
+                <!-- 3-Day Recovery Plan -->
+                <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+                  <span class="text-xs font-bold text-slate-300 block mb-2">3-Day Farmer Recovery Plan:</span>
+                  <div class="space-y-1.5 text-xs text-slate-300">
+                    <div class="flex items-start gap-2">
+                      <span class="bg-brand-600/30 text-brand-300 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold shrink-0">DAY 1</span>
+                      <span id="planDay1" class="text-slate-300">Cut and burn spotted lower leaves. Apply chemical spray.</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <span class="bg-blue-600/30 text-blue-300 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold shrink-0">DAY 3</span>
+                      <span id="planDay3" class="text-slate-300">Inoculate root zone with Trichoderma viride in compost.</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                      <span class="bg-amber-600/30 text-amber-300 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold shrink-0">DAY 7</span>
+                      <span id="planDay7" class="text-slate-300">Apply foliar spray of seaweed + Zinc-Boron micronutrients.</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Sensor correlation -->
+                <div class="p-2.5 bg-slate-950/90 rounded-xl border border-slate-800 text-[11px] text-slate-400 flex items-center gap-2">
+                  <i class="fa-solid fa-satellite-dish text-brand-400"></i>
+                  <span id="resSensorCorrelation">Current station humidity is 64.2%. Fungal spore germination risk is moderate.</span>
+                </div>
+
+                <div class="pt-1">
+                  <button id="printReportBtn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-pdf"></i> Save / Print Farmer Diagnosis Card
+                  </button>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- VIEW 3: ESP32-CAM LIVE FIELD VIDEO & SURVEILLANCE                        -->
+        <!-- ========================================================================= -->
+        <div id="view-surveillance" class="app-view hidden space-y-6">
+          
+          <div class="glass-panel rounded-2xl p-6 shadow-xl">
+            
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5 pb-4 border-b border-emerald-500/15">
+              <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/15 px-2.5 py-1 rounded-full border border-blue-500/25">
+                  <i class="fa-solid fa-camera mr-1"></i> AI-Thinker OV2640 Module
+                </span>
+                <h2 class="text-xl font-extrabold text-white mt-1.5 flex items-center gap-2">
+                  <span>ESP32-CAM Live Field Surveillance</span>
+                </h2>
+                <p class="text-xs text-slate-300">Wireless real-time crop streaming with onboard ultra-bright flashlight control</p>
+              </div>
+
+              <!-- Stream Source Switcher Tabs -->
+              <div class="flex items-center space-x-2 text-xs">
+                <button id="tabEsp32CamMode" class="px-3.5 py-2 rounded-xl bg-blue-600 text-white font-bold transition flex items-center gap-1.5 shadow">
+                  <i class="fa-solid fa-video"></i> ESP32-CAM Live Stream
+                </button>
+                <button id="tabSimulationMode" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white font-semibold transition flex items-center gap-1.5">
+                  <i class="fa-solid fa-gamepad"></i> Field Simulator
+                </button>
+              </div>
+            </div>
+
+            <!-- ESP32-CAM Connection Bar with Anti-Lag Stream Engine -->
+            <div id="esp32CamConfigBar" class="mb-4 p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div class="flex items-center space-x-2 flex-1 min-w-[280px]">
+                <span class="text-slate-400 font-semibold shrink-0"><i class="fa-solid fa-wifi text-blue-400 mr-1"></i> ESP32-CAM IP:</span>
+                <input type="text" id="esp32CamIpInput" value="192.168.1.150" placeholder="192.168.1.150"
+                  class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono outline-none focus:border-blue-500 w-36">
+                <button id="connectEsp32CamBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg font-bold transition shadow">
+                  Connect
+                </button>
+                <button id="flushLagBufferBtn" title="Drop accumulated stream latency immediately" class="bg-slate-800 hover:bg-slate-700 text-yellow-300 border border-yellow-500/30 px-2.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1">
+                  <i class="fa-solid fa-bolt text-[10px]"></i> Flush Lag
+                </button>
+              </div>
+
+              <div class="flex items-center space-x-2.5 flex-wrap">
+                <!-- Stream Acceleration Engine -->
+                <div class="flex items-center space-x-1.5">
+                  <span class="text-slate-400 text-[11px] font-semibold hidden sm:inline">Engine:</span>
+                  <select id="streamEngineSelector" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-emerald-400 font-semibold text-xs outline-none">
+                    <option value="turbo">⚡ Turbo (Zero-Lag / Smooth)</option>
+                    <option value="mjpeg">📺 Direct MJPEG Stream</option>
+                  </select>
+                </div>
+
+                <!-- Hardware Resolution -->
+                <div class="flex items-center space-x-1.5">
+                  <select id="camResolutionSelector" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-300 font-mono text-xs outline-none">
+                    <option value="QVGA">⚡ 320x240 (Fastest 30 FPS)</option>
+                    <option value="VGA" selected>⚖️ 640x480 (VGA 20 FPS)</option>
+                    <option value="SVGA">📷 800x600 (High Detail)</option>
+                  </select>
+                </div>
+
+                <!-- Flashlight Toggle -->
+                <button id="esp32FlashlightBtn" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold transition flex items-center gap-1.5">
+                  <i class="fa-solid fa-bolt"></i>
+                  <span>Flash: <b id="flashStateText">OFF</b></span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Video Player Window -->
+            <div class="relative rounded-2xl overflow-hidden bg-black aspect-video border border-slate-800 shadow-2xl flex items-center justify-center group" id="surveillanceScreen">
+              
+              <img id="esp32LiveStreamImg" src="" alt="ESP32-CAM Stream" class="w-full h-full object-cover hidden">
+              <canvas id="liveStreamCanvas" class="w-full h-full object-cover"></canvas>
+
+              <!-- Live HUD Telemetry Overlay -->
+              <div class="absolute top-4 left-4 z-10 flex flex-col space-y-1.5 pointer-events-none">
+                <div class="inline-flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-mono font-bold text-white border border-white/20">
+                  <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                  <span id="camNameOverlay">ESP32-CAM FIELD NODE 01 (DRIP ZONE)</span>
+                  <span class="text-red-400 ml-1">LIVE</span>
+                </div>
+                <div class="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-mono text-emerald-300 border border-white/10 space-y-0.5">
+                  <div>TEMP: <span id="hudTemp">29.4 °C</span> | HUM: <span id="hudHum">60.7 %</span></div>
+                  <div>SOIL: <span id="hudSoil">42.0 %</span> | FLAME: <span id="hudFlame" class="text-emerald-400">SECURE</span></div>
+                  <div>PUMP: <span id="hudPump" class="text-blue-400">STANDBY (OFF)</span></div>
+                </div>
+              </div>
+
+              <!-- Top Right Timestamp & Live FPS Latency Stats Overlay -->
+              <div class="absolute top-4 right-4 z-10 flex flex-col items-end space-y-1.5 pointer-events-none">
+                <div class="bg-black/60 backdrop-blur-md px-3 py-1 rounded-xl text-xs font-mono text-white border border-white/20">
+                  <span id="hudLiveTime">2026-11-18 19:20:00</span>
+                </div>
+                <!-- Real-Time FPS and Ping Latency Badge -->
+                <div id="hudStreamStats" class="bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-mono text-white border border-white/15 flex items-center gap-1.5">
+                  <span class="text-emerald-400 font-bold">28 FPS</span>
+                  <span class="text-slate-400">|</span>
+                  <span class="text-emerald-400">35ms</span>
+                  <span class="text-slate-400">|</span>
+                  <span class="text-blue-300 font-semibold uppercase text-[9px]">TURBO</span>
+                </div>
+              </div>
+
+              <!-- Video Control Bar Overlay (Bottom) -->
+              <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 flex flex-wrap items-center justify-between gap-3 z-10 opacity-90 group-hover:opacity-100 transition">
+                <div class="flex items-center space-x-2">
+                  <button id="toggleNightVisionBtn" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-600 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-moon text-emerald-400"></i>
+                    <span>Night Vision IR</span>
+                  </button>
+                  <button id="triggerMotionAlertBtn" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-600 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-person-walking text-amber-400"></i>
+                    <span>Simulate Motion</span>
+                  </button>
+                </div>
+
+                <!-- PTZ Virtual Joystick Controls -->
+                <div class="flex items-center space-x-1 bg-slate-900/80 px-2 py-1 rounded-xl border border-slate-700">
+                  <button class="ptz-btn p-1.5 text-slate-300 hover:text-white text-xs" title="Pan Left" data-dir="left"><i class="fa-solid fa-arrow-left"></i></button>
+                  <button class="ptz-btn p-1.5 text-slate-300 hover:text-white text-xs" title="Tilt Up" data-dir="up"><i class="fa-solid fa-arrow-up"></i></button>
+                  <button class="ptz-btn p-1.5 text-slate-300 hover:text-white text-xs" title="Tilt Down" data-dir="down"><i class="fa-solid fa-arrow-down"></i></button>
+                  <button class="ptz-btn p-1.5 text-slate-300 hover:text-white text-xs" title="Pan Right" data-dir="right"><i class="fa-solid fa-arrow-right"></i></button>
+                  <button class="ptz-btn p-1.5 text-slate-300 hover:text-white text-xs ml-1" title="Zoom In" data-dir="in"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                  <button class="ptz-btn p-1.5 text-slate-300 hover:text-white text-xs" title="Zoom Out" data-dir="out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                </div>
+
+                <!-- Snapshot Capture Button -->
+                <div class="flex items-center space-x-2">
+                  <button id="captureSnapshotBtn" class="px-4 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-xs font-bold text-white shadow-lg shadow-brand-500/25 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-camera"></i>
+                    <span>Take Field Snapshot</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Field Snapshot Gallery -->
+            <div class="mt-6 pt-5 border-t border-emerald-500/15">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-sm text-white flex items-center gap-2">
+                  <i class="fa-solid fa-images text-brand-400"></i>
+                  <span>Recent ESP32-CAM Field Image Captures</span>
+                </h3>
+                <span class="text-xs text-slate-400" id="snapshotCount">0 Snapshots Saved</span>
+              </div>
+              <div id="snapshotGallery" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3"></div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- VIEW 4: 10-DAY WEATHER FORECAST                                          -->
+        <!-- ========================================================================= -->
+        <div id="view-weather" class="app-view hidden space-y-6">
+          
+          <div class="glass-panel rounded-2xl p-6 shadow-xl border border-blue-800/30">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-blue-400 bg-blue-500/15 px-2.5 py-1 rounded-full border border-blue-500/25">
+                  <i class="fa-solid fa-cloud-sun mr-1"></i> Agricultural Agrometeorology
+                </span>
+                <h2 class="text-2xl font-extrabold text-white mt-2">10-Day Detailed Agriculture Weather Forecast</h2>
+                <p class="text-slate-300 text-xs mt-1">High/Low temperatures, rain probability %, humidity, solar UV, and evapotranspiration irrigation advisories.</p>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <i class="fa-solid fa-location-dot text-xs"></i>
+                  </span>
+                  <input type="text" id="weatherLocationInput" value="Central Agro Station" placeholder="City or Farm Location"
+                    class="bg-slate-900 border border-slate-700 rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-blue-500 w-48 sm:w-60">
+                </div>
+                <button id="refreshWeatherBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Today's Deep Dive -->
+            <div id="todayWeatherCard" class="lg:col-span-4 glass-panel rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-4">
+                  <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Today's Station Climate</span>
+                  <span id="todayWeatherIcon" class="text-4xl">☀️</span>
+                </div>
+                
+                <div class="flex items-baseline space-x-3">
+                  <span id="todayTempMax" class="text-5xl font-black text-white font-mono">31</span>
+                  <span class="text-2xl font-bold text-slate-400">°C</span>
+                  <span class="text-slate-300 text-xs font-mono">Low: <b id="todayTempMin" class="text-blue-300 font-bold">20°C</b></span>
+                </div>
+                
+                <p id="todayCondition" class="text-base font-bold text-white mt-2">Sunny & Clear Sky</p>
+                
+                <div class="grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-emerald-500/15 text-xs">
+                  <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 block"><i class="fa-solid fa-cloud-rain text-blue-400 mr-1"></i> Rain Chance:</span>
+                    <span id="todayRainProb" class="font-mono font-bold text-white text-sm">5% (0 mm)</span>
+                  </div>
+                  <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 block"><i class="fa-solid fa-wind text-teal-400 mr-1"></i> Wind Speed:</span>
+                    <span id="todayWind" class="font-mono font-bold text-white text-sm">14 km/h</span>
+                  </div>
+                  <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 block"><i class="fa-solid fa-droplet text-cyan-400 mr-1"></i> Rel. Humidity:</span>
+                    <span id="todayHumidity" class="font-mono font-bold text-white text-sm">58%</span>
+                  </div>
+                  <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 block"><i class="fa-solid fa-sun text-amber-400 mr-1"></i> UV Index:</span>
+                    <span id="todayUV" class="font-mono font-bold text-white text-sm">7 (High)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-6 p-3.5 bg-brand-950/40 border border-brand-800/50 rounded-xl text-xs">
+                <div class="font-bold text-brand-400 flex items-center gap-1.5 mb-1">
+                  <i class="fa-solid fa-wheat-awn"></i>
+                  <span>Agronomic Recommendation:</span>
+                </div>
+                <p id="todayAgriAdvisory" class="text-slate-300 leading-relaxed text-[11px]">
+                  Optimal weather for crop irrigation. Maintain capacitive soil sensor target at 45% moisture.
+                </p>
+              </div>
+            </div>
+
+            <!-- 10-Day Trend Chart -->
+            <div class="lg:col-span-8 glass-panel rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-emerald-500/15">
+                  <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center text-sm border border-blue-500/25">
+                      <i class="fa-solid fa-chart-area"></i>
+                    </div>
+                    <div>
+                      <h3 class="font-bold text-sm text-white">10-Day Temperature & Rain Probability Trend</h3>
+                      <p class="text-[11px] text-slate-300">Agricultural forecasting for optimal harvesting & sowing schedules</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="relative h-64 sm:h-72 w-full mt-2">
+                  <canvas id="weatherTrendChart"></canvas>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between text-xs text-slate-400 pt-3 border-t border-emerald-500/15">
+                <span>Model: Open-Meteo High-Resolution Global Agrometeorology</span>
+                <span class="font-mono text-emerald-400">FAO-56 ET0 Calculated</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 10-Day Cards Breakdown -->
+          <div class="space-y-3">
+            <h3 class="font-bold text-sm text-white flex items-center gap-2">
+              <i class="fa-solid fa-calendar-days text-amber-400"></i>
+              <span>Detailed Day-by-Day Forecast Breakdown (10 Days)</span>
+            </h3>
+
+            <div id="weather10DayGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"></div>
+          </div>
+
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- VIEW 5: HARDWARE SETUP & ARDUINO CODE (ESP8266 + ESP32-CAM)               -->
+        <!-- ========================================================================= -->
+        <div id="view-hardware" class="app-view hidden space-y-6">
+          
+          <div class="glass-panel rounded-2xl p-6 shadow-xl">
+            
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-emerald-500/15">
+              <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/15 px-2.5 py-1 rounded-full border border-purple-500/25">
+                  <i class="fa-solid fa-microchip mr-1"></i> Microcontroller Firmware
+                </span>
+                <h2 class="text-xl font-extrabold text-white mt-2">Hardware Schematics & Arduino Sketches</h2>
+                <p class="text-xs text-slate-300 mt-1">Wiring diagrams and code for both ESP8266 (Sensors & Pump) and ESP32-CAM (Field Camera)</p>
+              </div>
+
+              <!-- Firmware Selector Tabs -->
+              <div class="flex space-x-2 text-xs">
+                <button id="tabCodeEsp8266" class="px-3.5 py-1.5 rounded-xl bg-purple-600 text-white font-bold transition shadow">ESP8266 NodeMCU</button>
+                <button id="tabCodeEsp32Cam" class="px-3.5 py-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white font-semibold transition">ESP32-CAM (AI-Thinker)</button>
+              </div>
+            </div>
+
+            <!-- PINOUT TABLE -->
+            <div class="overflow-x-auto rounded-xl border border-slate-800 mb-6">
+              <table class="w-full text-left text-xs text-slate-300">
+                <thead class="bg-slate-950/80 text-slate-400 uppercase font-semibold border-b border-slate-800">
+                  <tr>
+                    <th class="py-3 px-4">Device</th>
+                    <th class="py-3 px-4">Component</th>
+                    <th class="py-3 px-4">Pinout Connection</th>
+                    <th class="py-3 px-4">Function / Trigger</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 bg-slate-900/40 font-mono">
+                  <tr>
+                    <td class="py-2.5 px-4 font-bold text-white">ESP8266</td>
+                    <td class="py-2.5 px-4 text-amber-300">DHT11 Temp & Humidity</td>
+                    <td class="py-2.5 px-4 font-bold text-brand-400">DATA -> GPIO 4 (D2)</td>
+                    <td class="py-2.5 px-4 text-slate-400">Temperature & Humidity stream</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2.5 px-4 font-bold text-white">ESP8266</td>
+                    <td class="py-2.5 px-4 text-emerald-300">Capacitive Soil Sensor</td>
+                    <td class="py-2.5 px-4 font-bold text-brand-400">AOUT -> ADC0 (A0)</td>
+                    <td class="py-2.5 px-4 text-slate-400">Analog soil moisture (0-1.0V)</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2.5 px-4 font-bold text-white">ESP8266</td>
+                    <td class="py-2.5 px-4 text-red-300">Flame / Fire Sensor</td>
+                    <td class="py-2.5 px-4 font-bold text-brand-400">DO -> GPIO 14 (D5)</td>
+                    <td class="py-2.5 px-4 text-slate-400">Active LOW on flame trigger</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2.5 px-4 font-bold text-white">ESP8266</td>
+                    <td class="py-2.5 px-4 text-blue-300">5V Water Pump Relay</td>
+                    <td class="py-2.5 px-4 font-bold text-brand-400">IN -> GPIO 12 (D6)</td>
+                    <td class="py-2.5 px-4 text-slate-400">Active LOW Relay Driver</td>
+                  </tr>
+                  <tr class="bg-slate-950/40">
+                    <td class="py-2.5 px-4 font-bold text-blue-400">ESP32-CAM</td>
+                    <td class="py-2.5 px-4 text-blue-300">OV2640 Camera Sensor</td>
+                    <td class="py-2.5 px-4 font-bold text-blue-300">AI-Thinker Pinout (GPIO 0-39)</td>
+                    <td class="py-2.5 px-4 text-slate-400">MJPEG stream at port 81</td>
+                  </tr>
+                  <tr class="bg-slate-950/40">
+                    <td class="py-2.5 px-4 font-bold text-blue-400">ESP32-CAM</td>
+                    <td class="py-2.5 px-4 text-amber-300">Ultra-Bright Flashlight</td>
+                    <td class="py-2.5 px-4 font-bold text-amber-300">Built-in Flash LED -> GPIO 4</td>
+                    <td class="py-2.5 px-4 text-slate-400">Controlled via /flash?state=1</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Code Viewer Box -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span id="codeFileNameDisplay" class="text-xs font-bold text-slate-300 font-mono">esp8266_agriculture.ino (Arduino C++)</span>
+                <div class="flex items-center space-x-3">
+                  <a id="downloadCodeLink" href="/esp8266_code/esp8266_agriculture.ino" download="esp8266_agriculture.ino" class="text-xs text-purple-400 hover:text-purple-300 font-mono flex items-center gap-1 font-semibold">
+                    <i class="fa-solid fa-download"></i> Download .INO
+                  </a>
+                  <button id="copyArduinoCodeBtn" class="text-xs text-brand-400 hover:text-brand-300 font-mono flex items-center gap-1 font-semibold">
+                    <i class="fa-regular fa-copy"></i> Copy Code
+                  </button>
+                </div>
+              </div>
+              <pre class="bg-slate-950/90 p-4 rounded-xl border border-slate-800 text-xs font-mono text-emerald-300 overflow-x-auto max-h-96 leading-relaxed select-all" id="arduinoCodeBlock">
+// Loading firmware sketch...
+              </pre>
+            </div>
+
+          </div>
+
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 4. HARDWARE SIMULATOR DRAWER                                              -->
+  <!-- ========================================================================= -->
+  <div id="simulatorDrawer" class="fixed inset-y-0 right-0 z-40 w-80 sm:w-96 bg-slate-950/95 border-l border-emerald-500/20 shadow-2xl p-6 transform translate-x-full transition-transform duration-300 flex flex-col justify-between overflow-y-auto backdrop-blur-2xl">
+    <div>
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm border border-purple-500/30">
+            <i class="fa-solid fa-sliders"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm text-white">Hardware Test Bench</h3>
+            <p class="text-[11px] text-slate-400">Test sensors without physical board</p>
+          </div>
+        </div>
+        <button id="closeSimulatorDrawerBtn" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-5 mt-5 text-xs">
+        <div>
+          <div class="flex items-center justify-between mb-1.5 font-semibold text-slate-300">
+            <span>DHT11 Temperature:</span>
+            <span id="simTempLabel" class="text-amber-400 font-mono font-bold">29.4 °C</span>
+          </div>
+          <input type="range" id="simTempSlider" min="10" max="45" step="0.5" value="29.4"
+            class="w-full accent-amber-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5 font-semibold text-slate-300">
+            <span>DHT11 Humidity:</span>
+            <span id="simHumidityLabel" class="text-blue-400 font-mono font-bold">60.7 %</span>
+          </div>
+          <input type="range" id="simHumiditySlider" min="20" max="95" step="1" value="60.7"
+            class="w-full accent-blue-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5 font-semibold text-slate-300">
+            <span>Soil Moisture (Capacitive):</span>
+            <span id="simSoilLabel" class="text-emerald-400 font-mono font-bold">42 %</span>
+          </div>
+          <input type="range" id="simSoilSlider" min="10" max="90" step="1" value="42"
+            class="w-full accent-emerald-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+          <p class="text-[10px] text-slate-400 mt-1">Slide below 35% to trigger pump auto-start!</p>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="font-bold text-white block">Simulate Fire / Flame</span>
+              <span class="text-[11px] text-slate-400">Triggers siren & emergency cutoff</span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="simFlameToggle" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+            </label>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800">
+          <span class="font-bold text-slate-300 block mb-2">Simulate Scenarios:</span>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="scenarioDroughtBtn" class="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-left text-slate-300 transition border border-slate-800">
+              <div class="font-bold text-white text-[11px]">Dry Drought</div>
+              <div class="text-[10px] text-amber-400">Soil 22%, 36°C</div>
+            </button>
+            <button id="scenarioHeavyRainBtn" class="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-left text-slate-300 transition border border-slate-800">
+              <div class="font-bold text-white text-[11px]">Heavy Rain</div>
+              <div class="text-[10px] text-blue-400">Soil 85%, 21°C</div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pt-4 border-t border-slate-800 text-center">
+      <button id="resetSimulatorBtn" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-slate-300 transition border border-slate-800">
+        Reset to Default Values
+      </button>
+    </div>
+  </div>
+
+  <audio id="sirenAudio" preload="auto"></audio>
+
+  <!-- Application Scripts -->
+  <script src="js/app.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/disease.js"></script>
+  <script src="js/surveillance.js"></script>
+  <script src="js/weather.js"></script>
+</body>
+</html>

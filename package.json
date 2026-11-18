@@ -1,0 +1,28 @@
+{
+  "name": "agrismart-iot",
+  "version": "1.0.0",
+  "description": "AgriSmart IoT Agriculture Monitoring System & ESP32-CAM Field Surveillance",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "tunnel": "npx localtunnel --port 3000"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "agriculture",
+    "iot",
+    "esp8266",
+    "esp32-cam",
+    "smart-farming"
+  ],
+  "author": "AgriSmart Team",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.3.0"
+  }
+}
