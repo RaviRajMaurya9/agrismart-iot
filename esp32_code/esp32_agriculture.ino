@@ -23,8 +23,8 @@ const char* WIFI_PASSWORD = "23712371";     // Your Wi-Fi Password
 // Set to 'false' to test with your local PC server running on the same Wi-Fi.
 const bool USE_CLOUD_SERVER = true;
 
-// Cloud Render Endpoint (Active & verified on Render):
-const char* CLOUD_SERVER_URL = "https://agrismart-iot.onrender.com/api/esp8266/telemetry";
+// Cloud Render Endpoint (Active & verified on your Render service agrismart-iot-1):
+const char* CLOUD_SERVER_URL = "https://agrismart-iot-1.onrender.com/api/esp32/telemetry";
 
 // Local Server Config (Your PC IP on Wi-Fi):
 const char* LOCAL_SERVER_HOST = "10.58.24.12";
