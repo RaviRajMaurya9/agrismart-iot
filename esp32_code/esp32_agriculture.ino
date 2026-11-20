@@ -10,7 +10,7 @@
  *     *IMPORTANT*: GPIO 34 belongs to ADC1. ADC1 can be read continuously
  *     even when WiFi is actively transmitting (ADC2 pins cannot be used with WiFi).
  *  3. Flame / Fire Sensor     -> Digital Out (DO): GPIO 15 (Active LOW)
- *  4. 5V Water Pump Relay     -> Control IN: GPIO 23 (Active LOW relay)
+ *  4. 5V Water Pump Relay     -> Control IN: GPIO 23 (Active LOW relay by default)
  *  5. Status / Heartbeat LED  -> Builtin Blue LED: GPIO 2
  *  
  *  Libraries Required (install via Arduino IDE Library Manager):
@@ -30,12 +30,14 @@ const char* WIFI_SSID     = "YOUR_WIFI_SSID";         // Replace with your WiFi 
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";     // Replace with your WiFi Password
 
 // Server URL where AgriSmart backend is running.
-// If testing on local network, use your computer's local IP (e.g., "192.168.1.100").
-// If deployed to cloud (Render/AWS), set useCloudServer = true and provide the full URL.
+// If testing on local network, use your computer's local IP.
+// DETECTED COMPUTER IP:
+// - Connected via Home/Office Wi-Fi: "10.58.24.12"
+// - Connected via Windows Mobile Hotspot: "192.168.137.1"
 const bool  USE_CLOUD_SERVER = false;
 const char* CLOUD_SERVER_URL = "https://your-agrismart-app.onrender.com/api/esp32/telemetry";
 
-const char* LOCAL_SERVER_HOST = "192.168.1.100";
+const char* LOCAL_SERVER_HOST = "10.58.24.12";        // <-- Set to your computer's Wi-Fi IP
 const int   LOCAL_SERVER_PORT = 3000;
 const char* LOCAL_TELEMETRY_PATH = "/api/esp32/telemetry";
 
@@ -48,14 +50,19 @@ const char* LOCAL_TELEMETRY_PATH = "/api/esp32/telemetry";
 #define RELAY_PUMP    23    // GPIO 23 - Water Pump 5V Relay Control
 #define STATUS_LED    2     // GPIO 2  - Builtin LED on ESP32 DevKit
 
-// ---------------------- 3. SENSOR CALIBRATION (12-bit ADC: 0 - 4095) -----
+// ---------------------- 3. RELAY POLARITY CONFIGURATION -----------------
+// Standard 5V Arduino/ESP32 relay modules are Active LOW (LOW turns relay ON, HIGH turns OFF).
+// If your relay module is Active HIGH (HIGH turns relay ON), change this to false:
+const bool RELAY_ACTIVE_LOW = true;
+
+// ---------------------- 4. SENSOR CALIBRATION (12-bit ADC: 0 - 4095) -----
 // Calibrate these numbers for your specific capacitive probe:
 // In dry air (0% moisture), ESP32 ADC reads ~3200-3600
 // Submerged in a glass of water (100% moisture), ESP32 ADC reads ~1400-1700
 const int AIR_VALUE   = 3200;  // Dry air reading
 const int WATER_VALUE = 1500;  // Submerged water reading
 
-// ---------------------- 4. OBJECTS & GLOBALS ----------------------------
+// ---------------------- 5. OBJECTS & GLOBALS ----------------------------
 DHT dht(DHTPIN, DHTTYPE);
 unsigned long lastSendTime = 0;
 const unsigned long SEND_INTERVAL_MS = 3000; // Sync telemetry every 3 seconds
@@ -78,9 +85,17 @@ void setup() {
   analogReadResolution(12);
   analogSetAttenuation(ADC_11db);
 
-  // Default pump state: OFF (Active LOW relay -> HIGH is OFF)
-  digitalWrite(RELAY_PUMP, HIGH);
+  // Set default pump state: OFF
+  digitalWrite(RELAY_PUMP, RELAY_ACTIVE_LOW ? HIGH : LOW);
   digitalWrite(STATUS_LED, LOW); // LED OFF
+
+  // Startup Relay Hardware Self-Test:
+  // Clicks relay for 800ms so you can physically hear the relay click!
+  Serial.println("⚙️ Testing physical relay click on GPIO 23...");
+  digitalWrite(RELAY_PUMP, RELAY_ACTIVE_LOW ? LOW : HIGH); // ON
+  delay(800);
+  digitalWrite(RELAY_PUMP, RELAY_ACTIVE_LOW ? HIGH : LOW); // OFF
+  Serial.println("✅ Relay click self-test complete (Heard CLICK sound).");
 
   // Start DHT11
   dht.begin();
@@ -110,7 +125,7 @@ void loop() {
   int flameState = digitalRead(FLAME_PIN);
   if (flameState == LOW) { // Common flame modules pull LOW when fire is detected
     // Immediately cut off pump for safety without waiting for next server tick
-    digitalWrite(RELAY_PUMP, HIGH);
+    digitalWrite(RELAY_PUMP, RELAY_ACTIVE_LOW ? HIGH : LOW);
     Serial.println("🔥 [CRITICAL SAFETY ALERT] Flame detected by sensor! Emergency pump cutoff engaged.");
   }
 }
@@ -134,13 +149,13 @@ void connectWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     digitalWrite(STATUS_LED, HIGH); // Steady ON on ESP32 when connected
     Serial.println("\n✅ WiFi Connected Successfully!");
-    Serial.print("ESP32 IP Address: ");
+    Serial.print("ESP32 Local IP Address: ");
     Serial.println(WiFi.localIP());
     Serial.print("WiFi RSSI: ");
     Serial.print(WiFi.RSSI());
     Serial.println(" dBm");
   } else {
-    Serial.println("\n❌ WiFi connection timed out. Will retry during main loop...");
+    Serial.println("\n❌ WiFi connection timed out. Check SSID & Password. Will retry...");
     digitalWrite(STATUS_LED, LOW);
   }
 }
@@ -152,9 +167,9 @@ void readSensorsAndSync() {
   float temperature = dht.readTemperature();
 
   if (isnan(humidity) || isnan(temperature)) {
-    Serial.println("⚠️ Warning: DHT11 read failed, checking sensor wiring.");
-    temperature = 26.5;
-    humidity = 62.0;
+    Serial.println("⚠️ Warning: DHT11 read failed! Check VCC (3.3V/5V), GND and GPIO 4 wiring.");
+    temperature = 26.5; // fallback
+    humidity = 62.0;    // fallback
   }
 
   // 2. Read Capacitive Soil Moisture Sensor on ADC1 GPIO 34 (Average of 5 samples)
@@ -186,6 +201,7 @@ void readSensorsAndSync() {
   doc["soilRaw"]       = rawSoil;
   doc["flame"]         = flameDetected ? 1 : 0;
   doc["ip"]            = WiFi.localIP().toString();
+  doc["rssi"]          = WiFi.RSSI();
 
   String jsonPayload;
   serializeJson(doc, jsonPayload);
@@ -220,19 +236,26 @@ void readSensorsAndSync() {
         int relayState = respDoc["pumpControl"]["relayState"]; // 1 = ON, 0 = OFF
         const char* mode = respDoc["pumpControl"]["mode"];
 
-        // Active LOW relay: LOW turns pump ON, HIGH turns pump OFF
         if (relayState == 1) {
-          digitalWrite(RELAY_PUMP, LOW);  // Turn Water Pump ON
-          Serial.printf("💧 [WATER PUMP ACTIVATED - ON] (Mode: %s)\n", mode);
+          // Turn Water Pump ON
+          digitalWrite(RELAY_PUMP, RELAY_ACTIVE_LOW ? LOW : HIGH);
+          Serial.printf("💧 [WATER PUMP ACTIVATED - ON] Relay GPIO 23 set to %s (Mode: %s)\n",
+                        RELAY_ACTIVE_LOW ? "LOW" : "HIGH", mode);
         } else {
-          digitalWrite(RELAY_PUMP, HIGH); // Turn Water Pump OFF
-          Serial.printf("⛔ [WATER PUMP DEACTIVATED - OFF] (Mode: %s)\n", mode);
+          // Turn Water Pump OFF
+          digitalWrite(RELAY_PUMP, RELAY_ACTIVE_LOW ? HIGH : LOW);
+          Serial.printf("⛔ [WATER PUMP DEACTIVATED - OFF] Relay GPIO 23 set to %s (Mode: %s)\n",
+                        RELAY_ACTIVE_LOW ? "HIGH" : "LOW", mode);
         }
       }
     } else {
       Serial.printf("❌ HTTP POST failed, error code: %d (%s)\n", httpCode, http.errorToString(httpCode).c_str());
+      Serial.printf("👉 Target Server: http://%s:%d%s\n", LOCAL_SERVER_HOST, LOCAL_SERVER_PORT, LOCAL_TELEMETRY_PATH);
+      Serial.println("👉 Make sure your PC and ESP32 are connected to the SAME Wi-Fi network!");
     }
 
     http.end();
+  } else {
+    Serial.println("⚠️ Wi-Fi not connected. Skipping telemetry sync.");
   }
 }

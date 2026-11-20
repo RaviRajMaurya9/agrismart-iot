@@ -224,9 +224,42 @@ async function pollSystemStatus() {
   }
 }
 
+function showToast(message, type = 'info') {
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  const bg = type === 'warning' ? 'bg-amber-950/90 border-amber-500/50 text-amber-200' :
+             type === 'danger' ? 'bg-red-950/90 border-red-500/50 text-red-200' :
+             'bg-slate-900/90 border-emerald-500/50 text-emerald-200';
+  const icon = type === 'warning' ? 'fa-triangle-exclamation text-amber-400' :
+               type === 'danger' ? 'fa-circle-xmark text-red-400' :
+               'fa-circle-check text-emerald-400';
+
+  toast.className = `p-3 px-4 rounded-xl border ${bg} backdrop-blur-md shadow-2xl flex items-center space-x-3 text-xs max-w-sm pointer-events-auto transition-all duration-300 transform translate-y-4 opacity-0`;
+  toast.innerHTML = `<i class="fa-solid ${icon} text-sm"></i><span class="flex-1 font-medium leading-snug">${message}</span>`;
+  container.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.classList.remove('translate-y-4', 'opacity-0');
+  });
+
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'translate-y-2');
+    setTimeout(() => toast.remove(), 300);
+  }, 4500);
+}
+
 function updateDashboardUI(data) {
-  const { sensors, pump, esp32, history, alerts } = data;
+  const { sensors, pump, esp32, history, alerts, detectedIps } = data;
   const espNode = esp32 || {};
+  const isEspOnline = Boolean(espNode.connected);
+  AppState.esp32Connected = isEspOnline;
 
   // 1. Temperature Card
   const tempVal = document.getElementById('tempValue');
@@ -240,14 +273,17 @@ function updateDashboardUI(data) {
     tempBar.style.width = `${pct}%`;
   }
   if (tempBadge) {
-    if (sensors.temperature > 35) {
+    if (!isEspOnline) {
+      tempBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> ESP32 Offline (Awaiting Sensor)';
+      tempBadge.className = 'inline-flex items-center gap-1 text-rose-400 font-semibold text-[11px]';
+    } else if (sensors.temperature > 35) {
       tempBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Heat Stress Warning (>35°C)';
       tempBadge.className = 'inline-flex items-center gap-1 text-amber-400 font-medium';
     } else if (sensors.temperature < 15) {
       tempBadge.innerHTML = '<i class="fa-solid fa-snowflake text-blue-400"></i> Cold Warning (<15°C)';
       tempBadge.className = 'inline-flex items-center gap-1 text-blue-400 font-medium';
     } else {
-      tempBadge.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Optimal (20-30°C)';
+      tempBadge.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> Optimal (20–30°C)';
       tempBadge.className = 'inline-flex items-center gap-1 text-emerald-400 font-medium';
     }
   }
@@ -269,7 +305,10 @@ function updateDashboardUI(data) {
     dewDisplay.textContent = `Dew: ${dew.toFixed(1)}°C`;
   }
   if (humBadge) {
-    if (sensors.humidity > 80) {
+    if (!isEspOnline) {
+      humBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> ESP32 Offline';
+      humBadge.className = 'inline-flex items-center gap-1 text-rose-400 font-semibold text-[11px]';
+    } else if (sensors.humidity > 80) {
       humBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> High Spore Risk (>80%)';
       humBadge.className = 'inline-flex items-center gap-1 text-rose-400 font-medium';
     } else {
@@ -287,7 +326,10 @@ function updateDashboardUI(data) {
   if (soilBar) soilBar.style.width = `${sensors.soilMoisture}%`;
   if (soilRaw) soilRaw.textContent = `Raw ADC: ${sensors.soilRawValue || 560}`;
   if (soilBadge) {
-    if (sensors.soilMoisture < pump.autoThresholdMin) {
+    if (!isEspOnline) {
+      soilBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i> ESP32 Offline';
+      soilBadge.className = 'inline-flex items-center gap-1 text-rose-400 font-semibold text-[11px]';
+    } else if (sensors.soilMoisture < pump.autoThresholdMin) {
       soilBadge.innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-400"></i> Dry Soil - Irrigation Needed';
       soilBadge.className = 'inline-flex items-center gap-1 text-amber-400 font-medium';
     } else if (sensors.soilMoisture > pump.autoThresholdMax) {
@@ -324,14 +366,14 @@ function updateDashboardUI(data) {
   } else {
     flameCard?.classList.remove('flame-alarm-card');
     if (flameText) {
-      flameText.textContent = 'SECURE';
-      flameText.className = 'text-2xl font-extrabold text-emerald-400 font-mono';
+      flameText.textContent = isEspOnline ? 'SECURE' : 'STANDBY';
+      flameText.className = isEspOnline ? 'text-2xl font-extrabold text-emerald-400 font-mono' : 'text-2xl font-extrabold text-slate-400 font-mono';
     }
     if (flameIcon) {
       flameIcon.className = 'w-8 h-8 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center text-sm border border-slate-700';
       flameIcon.innerHTML = '<i class="fa-solid fa-shield-halved"></i>';
     }
-    if (flameDesc) flameDesc.textContent = 'No Flame Detected';
+    if (flameDesc) flameDesc.textContent = isEspOnline ? 'No Flame Detected' : 'ESP32 Offline (Sensor Standby)';
     emergencyBanner?.classList.add('hidden');
 
     stopAudioAlarm();
@@ -344,6 +386,7 @@ function updateDashboardUI(data) {
   const pumpRuntime = document.getElementById('pumpRuntime');
   const pumpModeAutoBtn = document.getElementById('pumpModeAuto');
   const pumpModeManualBtn = document.getElementById('pumpModeManual');
+  const pumpNotice = document.getElementById('pumpSyncNotice');
 
   if (pump.state) {
     pumpOrb?.classList.add('active');
@@ -351,6 +394,14 @@ function updateDashboardUI(data) {
   } else {
     pumpOrb?.classList.remove('active');
     if (pumpStateText) pumpStateText.innerHTML = 'PUMP STOPPED<br>(OFF)';
+  }
+
+  if (pumpNotice) {
+    if (isEspOnline) {
+      pumpNotice.innerHTML = '<span class="text-emerald-400 font-medium"><i class="fa-solid fa-circle-check mr-1"></i> Physical Relay Synced with ESP32 (GPIO 23)</span>';
+    } else {
+      pumpNotice.innerHTML = '<span class="text-rose-400 font-medium"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ESP32 is OFFLINE — Relay cannot switch until hardware connects</span>';
+    }
   }
 
   if (pumpWaterToday) pumpWaterToday.textContent = `${pump.todayWaterDeliveredLiters.toFixed(1)} Liters`;
@@ -370,29 +421,48 @@ function updateDashboardUI(data) {
 
   // 6. ESP32 Hardware Status Widget
   const espStatusBadge = document.getElementById('espStatusBadge');
+  const espStatusSub = document.getElementById('espStatusSubtext');
   const espIpDisplay = document.getElementById('espIpDisplay');
   const espRssiDisplay = document.getElementById('espRssiDisplay');
   if (espStatusBadge) {
-    if (espNode.connected) {
+    if (isEspOnline) {
       espStatusBadge.className = 'inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
       espStatusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> ONLINE';
+      if (espStatusSub) {
+        espStatusSub.textContent = `Live Sync • ${espNode.ipAddress || 'Wi-Fi'}`;
+        espStatusSub.className = 'text-[9px] text-emerald-400/90 font-mono';
+      }
     } else {
-      espStatusBadge.className = 'inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30';
-      espStatusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> STANDBY';
+      espStatusBadge.className = 'inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30';
+      espStatusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> OFFLINE';
+      if (espStatusSub) {
+        const secText = espNode.secondsSinceSync !== null ? `${espNode.secondsSinceSync}s ago` : 'No data yet';
+        espStatusSub.textContent = `Disconnected (${secText})`;
+        espStatusSub.className = 'text-[9px] text-rose-400/90 font-mono';
+      }
     }
   }
-  if (espIpDisplay) espIpDisplay.textContent = espNode.ipAddress || '192.168.1.105';
-  if (espRssiDisplay) espRssiDisplay.textContent = `${espNode.rssi || -54} dBm`;
+  if (espIpDisplay) espIpDisplay.textContent = espNode.ipAddress || '10.58.24.12';
+  if (espRssiDisplay) espRssiDisplay.textContent = isEspOnline ? `${espNode.rssi || -54} dBm` : 'No Signal';
 
-  // 7. Render Alerts Log
+  // 7. Update Detected Server IP badge in Hardware Tab
+  if (detectedIps && detectedIps.length > 0) {
+    const badge = document.getElementById('detectedIpBadge');
+    if (badge) {
+      const best = detectedIps.find(n => n.iface.toLowerCase().includes('wi-fi') || n.iface.toLowerCase().includes('wireless')) || detectedIps[0];
+      badge.textContent = `${best.ip}:3000`;
+    }
+  }
+
+  // 8. Render Alerts Log
   renderAlerts(alerts);
 
-  // 8. Update Chart if loaded
+  // 9. Update Chart if loaded
   if (window.SensorChartModule && history) {
     window.SensorChartModule.updateData(history);
   }
 
-  // 9. Update Video HUD Overlay
+  // 10. Update Video HUD Overlay
   if (window.SurveillanceModule) {
     window.SurveillanceModule.updateHUD(sensors, pump);
   }
@@ -454,10 +524,18 @@ function initPumpControls() {
   // Big Orb Click (Manual Toggle)
   pumpOrb?.addEventListener('click', async () => {
     const isRunning = pumpOrb.classList.contains('active');
+    const newState = !isRunning;
+
+    if (!AppState.esp32Connected) {
+      showToast('⚠️ ESP32 is OFFLINE! Command queued, but physical relay (GPIO 23) cannot switch until ESP32 connects to Wi-Fi.', 'warning');
+    } else {
+      showToast(newState ? '💧 Activating Water Pump Relay (GPIO 23)...' : '⛔ Deactivating Water Pump Relay...', 'info');
+    }
+
     await fetch('/api/pump/toggle', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ state: !isRunning, mode: 'manual' })
+      body: JSON.stringify({ state: newState, mode: 'manual' })
     });
     pollSystemStatus();
   });
@@ -793,11 +871,25 @@ function initFirmwareTabs() {
     if (code) {
       navigator.clipboard.writeText(code).then(() => {
         copyBtn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> Copied!';
+        showToast('✅ Arduino sketch copied to clipboard!', 'info');
         setTimeout(() => {
           copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy Code';
         }, 2000);
       });
     }
+  });
+
+  const copyIpBtn = document.getElementById('copyServerIpBtn');
+  copyIpBtn?.addEventListener('click', () => {
+    const ipText = document.getElementById('detectedIpBadge')?.textContent?.trim() || '10.58.24.12:3000';
+    const hostOnly = ipText.split(':')[0];
+    navigator.clipboard.writeText(hostOnly).then(() => {
+      copyIpBtn.innerHTML = '<i class="fa-solid fa-check text-white"></i> Copied!';
+      showToast(`✅ Copied "${hostOnly}" to clipboard! Paste it into LOCAL_SERVER_HOST in Arduino IDE.`, 'info');
+      setTimeout(() => {
+        copyIpBtn.innerHTML = '<i class="fa-regular fa-copy"></i> <span>Copy IP</span>';
+      }, 2000);
+    });
   });
 }
 

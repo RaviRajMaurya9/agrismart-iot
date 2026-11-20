@@ -2,9 +2,23 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+function getDetectedIps() {
+  const nets = os.networkInterfaces();
+  const list = [];
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        list.push({ iface: name, ip: net.address });
+      }
+    }
+  }
+  return list;
+}
 
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
@@ -23,12 +37,13 @@ app.get('/', (req, res) => {
 // ---------------------------------------------------------------------
 let systemState = {
   esp32: {
-    connected: true,
-    lastSeen: new Date().toISOString(),
-    ipAddress: '192.168.1.105',
+    connected: false, // Default is OFFLINE until real telemetry packets arrive!
+    lastSeen: null,
+    ipAddress: null,
     firmwareVersion: 'v3.1.0-esp32',
     chipModel: 'ESP32 DevKit V1 (Dual-Core 240MHz)',
-    rssi: -54
+    rssi: null,
+    packetsReceived: 0
   },
   esp8266: null, // Initialized as alias below for backward-compatibility
   esp32cam: {
@@ -44,13 +59,14 @@ let systemState = {
     lastSeen: new Date().toISOString()
   },
   sensors: {
-    temperature: 26.8,       // DHT11 Celsius
-    humidity: 64.2,          // DHT11 Relative Humidity %
-    soilMoisture: 42.0,      // Capacitive Soil Moisture %
-    soilRawValue: 560,       // Analog A0 reading
+    temperature: 26.8,       // Fallback baseline
+    humidity: 64.2,          // Fallback baseline
+    soilMoisture: 42.0,      // Fallback baseline
+    soilRawValue: 560,       // Fallback baseline
     flameDetected: false,    // Flame digital sensor
     flameRawValue: 0,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: null,
+    hasRealData: false       // Set to true when first packet from real ESP32 arrives
   },
   pump: {
     state: false,
@@ -445,22 +461,40 @@ function addAlert(type, message) {
 // 1. ESP32 SENSOR TELEMETRY & AUTOMATED PUMP CONTROLLER
 // ---------------------------------------------------------------------
 function handleSensorTelemetry(req, res) {
-  const { temperature, humidity, soilMoisture, flame, soilRaw, ip } = req.body;
+  const { temperature, humidity, soilMoisture, flame, soilRaw, ip, rssi } = req.body;
 
-  if (temperature !== undefined) systemState.sensors.temperature = parseFloat(temperature);
-  if (humidity !== undefined) systemState.sensors.humidity = parseFloat(humidity);
-  if (soilMoisture !== undefined) systemState.sensors.soilMoisture = parseFloat(soilMoisture);
-  if (soilRaw !== undefined) systemState.sensors.soilRawValue = parseInt(soilRaw);
+  let hasValid = false;
+  if (temperature !== undefined && !isNaN(temperature)) {
+    systemState.sensors.temperature = parseFloat(temperature);
+    hasValid = true;
+  }
+  if (humidity !== undefined && !isNaN(humidity)) {
+    systemState.sensors.humidity = parseFloat(humidity);
+    hasValid = true;
+  }
+  if (soilMoisture !== undefined && !isNaN(soilMoisture)) {
+    systemState.sensors.soilMoisture = parseFloat(soilMoisture);
+    hasValid = true;
+  }
+  if (soilRaw !== undefined && !isNaN(soilRaw)) {
+    systemState.sensors.soilRawValue = parseInt(soilRaw);
+  }
+  if (hasValid) {
+    systemState.sensors.hasRealData = true;
+  }
 
   const flameVal = flame === 1 || flame === true || flame === '1';
   const prevFlame = systemState.sensors.flameDetected;
   systemState.sensors.flameDetected = flameVal;
   systemState.sensors.flameRawValue = flameVal ? 1 : 0;
 
+  const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || ip || '').replace('::ffff:', '');
   systemState.sensors.lastUpdated = new Date().toISOString();
   systemState.esp32.lastSeen = new Date().toISOString();
   systemState.esp32.connected = true;
-  if (ip) systemState.esp32.ipAddress = ip;
+  systemState.esp32.packetsReceived = (systemState.esp32.packetsReceived || 0) + 1;
+  systemState.esp32.ipAddress = ip || clientIp || '10.58.24.12';
+  if (rssi !== undefined) systemState.esp32.rssi = parseInt(rssi);
 
   if (flameVal && !prevFlame) {
     addAlert('danger', '🔥 FIRE HAZARD DETECTED: Flame sensor (GPIO 15) triggered emergency alert!');
@@ -499,10 +533,12 @@ app.post('/api/esp8266/telemetry', handleSensorTelemetry);
 
 function handleSensorUpdate(req, res) {
   const { temp, hum, soil, flame, raw } = req.query;
-  if (temp) systemState.sensors.temperature = parseFloat(temp);
-  if (hum) systemState.sensors.humidity = parseFloat(hum);
-  if (soil) systemState.sensors.soilMoisture = parseFloat(soil);
+  let hasValid = false;
+  if (temp) { systemState.sensors.temperature = parseFloat(temp); hasValid = true; }
+  if (hum) { systemState.sensors.humidity = parseFloat(hum); hasValid = true; }
+  if (soil) { systemState.sensors.soilMoisture = parseFloat(soil); hasValid = true; }
   if (raw) systemState.sensors.soilRawValue = parseInt(raw);
+  if (hasValid) systemState.sensors.hasRealData = true;
 
   const flameVal = flame === '1' || flame === 'true';
   systemState.sensors.flameDetected = flameVal;
@@ -510,6 +546,7 @@ function handleSensorUpdate(req, res) {
   systemState.sensors.lastUpdated = new Date().toISOString();
   systemState.esp32.lastSeen = new Date().toISOString();
   systemState.esp32.connected = true;
+  systemState.esp32.packetsReceived = (systemState.esp32.packetsReceived || 0) + 1;
 
   evaluatePumpAutomation();
 
@@ -538,16 +575,42 @@ app.get('/api/esp32/pump-status', handlePumpStatus);
 app.get('/api/esp8266/pump-status', handlePumpStatus);
 
 app.get('/api/esp32/status', (req, res) => {
-  res.json({ success: true, esp32: systemState.esp32 });
+  const now = Date.now();
+  const lastSeenMs = systemState.esp32.lastSeen ? new Date(systemState.esp32.lastSeen).getTime() : 0;
+  const isFresh = lastSeenMs > 0 && (now - lastSeenMs) <= 8000;
+  systemState.esp32.connected = isFresh;
+  res.json({ success: true, esp32: { ...systemState.esp32, connected: isFresh } });
 });
+
 app.get('/api/esp8266/status', (req, res) => {
-  res.json({ success: true, esp8266: systemState.esp32 });
+  const now = Date.now();
+  const lastSeenMs = systemState.esp32.lastSeen ? new Date(systemState.esp32.lastSeen).getTime() : 0;
+  const isFresh = lastSeenMs > 0 && (now - lastSeenMs) <= 8000;
+  systemState.esp32.connected = isFresh;
+  res.json({ success: true, esp8266: { ...systemState.esp32, connected: isFresh } });
 });
 
 app.get('/api/system/status', (req, res) => {
+  const now = Date.now();
+  // Connection heartbeat watchdog:
+  // Since ESP32 sends telemetry every 3 seconds, if no packet arrived in 8 seconds, mark as OFFLINE
+  const lastSeenMs = systemState.esp32.lastSeen ? new Date(systemState.esp32.lastSeen).getTime() : 0;
+  const isConnected = lastSeenMs > 0 && (now - lastSeenMs) <= 8000;
+  systemState.esp32.connected = isConnected;
+
+  const secondsSinceSync = lastSeenMs > 0 ? Math.floor((now - lastSeenMs) / 1000) : null;
+
   res.json({
     success: true,
-    data: systemState
+    data: {
+      ...systemState,
+      esp32: {
+        ...systemState.esp32,
+        connected: isConnected,
+        secondsSinceSync
+      },
+      detectedIps: getDetectedIps()
+    }
   });
 });
 
