@@ -249,7 +249,7 @@
               <div class="w-7 h-7 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center text-xs group-hover:scale-110 transition">
                 <i class="fa-solid fa-microchip"></i>
               </div>
-              <span class="font-medium">Hardware & Code</span>
+              <span class="font-medium">Hardware & Code (ESP)</span>
             </div>
             <span class="whitespace-nowrap text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-mono font-semibold">Firmware</span>
           </button>
@@ -331,7 +331,7 @@
             <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between group">
               <div>
                 <div class="flex items-center justify-between mb-2">
-                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">DHT11 Temperature</span>
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">DHT11 TEMPERATURE</span>
                   <div class="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-sm border border-amber-500/25">
                     <i class="fa-solid fa-temperature-half"></i>
                   </div>
@@ -361,7 +361,7 @@
             <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between group">
               <div>
                 <div class="flex items-center justify-between mb-2">
-                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">DHT11 Humidity</span>
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">DHT11 HUMIDITY</span>
                   <div class="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center text-sm border border-blue-500/25">
                     <i class="fa-solid fa-droplet"></i>
                   </div>
@@ -391,7 +391,7 @@
             <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between group">
               <div>
                 <div class="flex items-center justify-between mb-2">
-                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Soil Moisture (Capacitive)</span>
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">SOIL MOISTURE (CAPACITIVE)</span>
                   <div class="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-sm border border-emerald-500/25">
                     <i class="fa-solid fa-plant-wilt"></i>
                   </div>
@@ -401,13 +401,13 @@
                     <span id="soilValue" class="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight">42.0</span>
                     <span class="text-lg text-emerald-400 font-bold">%</span>
                   </div>
-                  <span id="soilRawDisplay" class="px-2.5 py-0.5 rounded-lg bg-slate-800/90 border border-slate-700/80 text-[11px] font-mono text-slate-200 font-bold">ADC: 560</span>
+                  <span id="soilRawDisplay" class="text-slate-400 font-mono text-xs">Raw ADC: 560</span>
                 </div>
               </div>
               <div class="mt-4 pt-3 border-t border-slate-800/80">
                 <div class="flex items-center justify-between text-xs mb-2">
                   <span id="soilStatusBadge" class="inline-flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px]">
-                    <i class="fa-solid fa-check-double text-[10px]"></i> Optimal Root Zone
+                    <i class="fa-solid fa-circle-check text-[10px]"></i> Optimal Root Zone
                   </span>
                   <span class="text-slate-300 font-mono text-[11px]">GPIO 34 (ADC1)</span>
                 </div>
@@ -421,27 +421,23 @@
             <div id="flameStatusCard" class="glass-panel rounded-2xl p-5 flex flex-col justify-between transition-all duration-300">
               <div>
                 <div class="flex items-center justify-between mb-2">
-                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Flame / Fire Sensor</span>
-                  <div id="flameIconContainer" class="w-8 h-8 rounded-xl bg-slate-800/80 text-emerald-400 flex items-center justify-center text-sm border border-slate-700/80">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">FLAME / FIRE SENSOR</span>
+                  <div id="flameIconContainer" class="w-8 h-8 rounded-xl bg-slate-800/80 text-slate-400 flex items-center justify-center text-sm border border-slate-700/80">
                     <i class="fa-solid fa-shield-halved"></i>
                   </div>
                 </div>
-                <div class="flex items-baseline justify-between mt-1">
+                <div class="mt-2">
                   <span id="flameText" class="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono tracking-wide">SECURE</span>
-                  <span class="px-2.5 py-0.5 rounded-lg bg-slate-800/90 border border-slate-700/80 text-[11px] font-mono text-slate-200 font-bold">GPIO 15</span>
                 </div>
               </div>
-              <div class="mt-4 pt-3 border-t border-slate-800/80">
-                <div class="flex items-center justify-between text-xs mb-2">
-                  <span id="flameDescBadge" class="inline-flex items-center gap-1.5 text-slate-300 text-[11px] font-medium">
-                    <i class="fa-solid fa-circle-check text-emerald-400 text-[10px]"></i> No Flame Detected
-                  </span>
-                  <span class="text-emerald-400/90 font-mono text-[10px] flex items-center gap-1">
-                    <i class="fa-solid fa-lock text-[9px]"></i> Auto-Cutoff
-                  </span>
+              <div class="mt-4 pt-3 border-t border-slate-800/80 space-y-1.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span id="flameDescBadge" class="text-slate-300 text-[11px] font-medium">No Flame Detected</span>
+                  <span class="text-slate-300 font-mono text-[11px]">GPIO 15</span>
                 </div>
-                <div class="w-full bg-slate-800/90 rounded-full h-1.5 overflow-hidden">
-                  <div class="bg-emerald-500 h-1.5 rounded-full w-full"></div>
+                <div class="text-emerald-400 font-mono text-[10px] flex items-center gap-1.5 pt-0.5">
+                  <i class="fa-solid fa-lock text-[9px]"></i>
+                  <span>Auto-Cutoff Safety Active</span>
                 </div>
               </div>
             </div>
@@ -461,14 +457,14 @@
                       <i class="fa-solid fa-faucet-drip"></i>
                     </div>
                     <div>
-                      <h3 class="font-bold text-sm text-white">Water Pump Controller</h3>
-                      <p class="text-[11px] text-slate-300 font-mono">ESP32 GPIO 23 Relay</p>
+                      <h3 class="font-bold text-sm text-white">Water Pump Relay Controller</h3>
+                      <p class="text-[11px] text-slate-300 font-mono">ESP32 GPIO 23 Output Relay</p>
                     </div>
                   </div>
                   <!-- Mode Switch -->
                   <div class="bg-slate-900/90 p-1 rounded-xl flex border border-slate-700/80 text-xs font-semibold">
-                    <button id="pumpModeAuto" class="px-2.5 py-1 rounded-lg bg-brand-600 text-white shadow font-bold">AUTO</button>
-                    <button id="pumpModeManual" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium">MANUAL</button>
+                    <button id="pumpModeAuto" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white font-medium">AUTO</button>
+                    <button id="pumpModeManual" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white shadow font-bold">MANUAL</button>
                   </div>
                 </div>
 
@@ -476,7 +472,7 @@
                 <div class="my-6 text-center">
                   <div id="pumpVisualOrb" class="w-32 h-32 mx-auto rounded-full flex flex-col items-center justify-center cursor-pointer transition-all duration-300 group">
                     <i id="pumpVisualIcon" class="fa-solid fa-power-off text-3xl text-slate-500 mb-1 transition group-hover:scale-110"></i>
-                    <span id="pumpVisualState" class="font-mono font-extrabold text-xs text-slate-400 tracking-wider">OFF</span>
+                    <span id="pumpVisualState" class="font-mono font-extrabold text-[11px] text-slate-400 tracking-wider text-center leading-tight">PUMP STOPPED<br>(OFF)</span>
                   </div>
                   <p class="text-xs text-slate-400 mt-3 font-medium">Click dial to toggle irrigation pump manually</p>
                 </div>
@@ -527,16 +523,10 @@
                     </div>
                   </div>
                   <!-- Legends -->
-                  <div class="flex items-center space-x-2 text-xs">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/25 font-semibold text-[11px]">
-                      <span class="w-2 h-2 rounded-full bg-amber-400"></span> Temp (°C)
-                    </span>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300 border border-blue-500/25 font-semibold text-[11px]">
-                      <span class="w-2 h-2 rounded-full bg-blue-400"></span> Humidity (%)
-                    </span>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 font-semibold text-[11px]">
-                      <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Soil (%)
-                    </span>
+                  <div class="flex items-center space-x-3 text-xs">
+                    <span class="text-amber-400 font-semibold text-xs flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span> Temp (°C)</span>
+                    <span class="text-blue-400 font-semibold text-xs flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-400 inline-block"></span> Humidity(%)</span>
+                    <span class="text-emerald-400 font-semibold text-xs flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span> Soil(%)</span>
                   </div>
                 </div>
 

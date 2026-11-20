@@ -451,7 +451,7 @@ function handleSensorTelemetry(req, res) {
   if (humidity !== undefined) systemState.sensors.humidity = parseFloat(humidity);
   if (soilMoisture !== undefined) systemState.sensors.soilMoisture = parseFloat(soilMoisture);
   if (soilRaw !== undefined) systemState.sensors.soilRawValue = parseInt(soilRaw);
-  
+
   const flameVal = flame === 1 || flame === true || flame === '1';
   const prevFlame = systemState.sensors.flameDetected;
   systemState.sensors.flameDetected = flameVal;
@@ -503,7 +503,7 @@ function handleSensorUpdate(req, res) {
   if (hum) systemState.sensors.humidity = parseFloat(hum);
   if (soil) systemState.sensors.soilMoisture = parseFloat(soil);
   if (raw) systemState.sensors.soilRawValue = parseInt(raw);
-  
+
   const flameVal = flame === '1' || flame === 'true';
   systemState.sensors.flameDetected = flameVal;
   systemState.sensors.flameRawValue = flameVal ? 1 : 0;
@@ -651,7 +651,7 @@ app.post('/api/diseases/diagnose', (req, res) => {
 
   if (!match) {
     if (selectedCrop && selectedCrop !== 'any') {
-      const candidates = DISEASE_DATABASE.filter(d => 
+      const candidates = DISEASE_DATABASE.filter(d =>
         d.crop.toLowerCase().includes(selectedCrop.toLowerCase()) || selectedCrop.toLowerCase().includes(d.crop.toLowerCase())
       );
       match = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : DISEASE_DATABASE[0];
@@ -691,7 +691,7 @@ app.post('/api/diseases/diagnose', (req, res) => {
       currentTemp: systemState.sensors.temperature,
       currentHumidity: systemState.sensors.humidity,
       currentSoilMoisture: systemState.sensors.soilMoisture,
-      riskAssessment: systemState.sensors.humidity > 75 
+      riskAssessment: systemState.sensors.humidity > 75
         ? `⚠️ Ambient Humidity is HIGH (${systemState.sensors.humidity}%). Fungal spores germinate within 4-6 hours. Prune canopy and keep pump on hold.`
         : `✅ Ambient Humidity is MODERATE (${systemState.sensors.humidity}%). Spore germination rate is low. Follow standard spray calendar.`
     }

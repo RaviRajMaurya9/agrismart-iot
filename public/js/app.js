@@ -136,7 +136,7 @@ function initNavigation() {
     btn.addEventListener('click', () => {
       const target = btn.getAttribute('data-nav');
       switchView(target);
-      
+
       // Close sidebar on mobile
       document.getElementById('sidebar')?.classList.add('-translate-x-full');
     });
@@ -328,7 +328,7 @@ function updateDashboardUI(data) {
       flameText.className = 'text-2xl font-extrabold text-emerald-400 font-mono';
     }
     if (flameIcon) {
-      flameIcon.className = 'w-10 h-10 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center text-lg border border-slate-700';
+      flameIcon.className = 'w-8 h-8 rounded-xl bg-slate-800 text-slate-400 flex items-center justify-center text-sm border border-slate-700';
       flameIcon.innerHTML = '<i class="fa-solid fa-shield-halved"></i>';
     }
     if (flameDesc) flameDesc.textContent = 'No Flame Detected';
@@ -347,10 +347,10 @@ function updateDashboardUI(data) {
 
   if (pump.state) {
     pumpOrb?.classList.add('active');
-    if (pumpStateText) pumpStateText.textContent = 'PUMP RUNNING (ON)';
+    if (pumpStateText) pumpStateText.innerHTML = 'PUMP RUNNING<br>(ON)';
   } else {
     pumpOrb?.classList.remove('active');
-    if (pumpStateText) pumpStateText.textContent = 'PUMP STOPPED (OFF)';
+    if (pumpStateText) pumpStateText.innerHTML = 'PUMP STOPPED<br>(OFF)';
   }
 
   if (pumpWaterToday) pumpWaterToday.textContent = `${pump.todayWaterDeliveredLiters.toFixed(1)} Liters`;
@@ -594,7 +594,7 @@ function stopAudioAlarm() {
       AppState.sirenOscillator.osc.stop();
       AppState.sirenOscillator.lfo.stop();
       AppState.sirenOscillator.osc.disconnect();
-    } catch (e) {}
+    } catch (e) { }
     AppState.sirenOscillator = null;
   }
 }
