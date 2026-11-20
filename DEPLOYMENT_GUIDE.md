@@ -58,17 +58,17 @@ If you want a live public HTTPS link **right this second** to open on your smart
 
 ---
 
-## 📡 Connecting ESP8266 & ESP32-CAM to Your Cloud Link
+## 📡 Connecting ESP32 & ESP32-CAM to Your Cloud Link
 
 Once your app is live on Render (`https://your-app-name.onrender.com`):
 
-### In ESP8266 Firmware (`esp8266_code/esp8266_agriculture.ino`):
+### In ESP32 Firmware (`esp32_code/esp32_agriculture.ino`):
 Change:
 ```cpp
-const char* SERVER_HOST = "your-app-name.onrender.com";
-const int   SERVER_PORT = 80; // or 443 with WiFiClientSecure
+const bool  USE_CLOUD_SERVER = true;
+const char* CLOUD_SERVER_URL = "https://your-app-name.onrender.com/api/esp32/telemetry";
 ```
-Your ESP8266 will stream DHT11 temperature, humidity, capacitive soil moisture, and flame data to your public cloud webpage from anywhere with a WiFi connection!
+Your ESP32 will stream DHT11 temperature, humidity, 12-bit capacitive soil moisture, and flame data to your public cloud webpage from anywhere in the world!
 
 ### In Web Dashboard for ESP32-CAM:
 1. Open your live cloud URL.

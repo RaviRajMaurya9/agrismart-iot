@@ -10,6 +10,7 @@ app.use(cors());
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/esp32_code', express.static(path.join(__dirname, 'esp32_code')));
 app.use('/esp8266_code', express.static(path.join(__dirname, 'esp8266_code')));
 app.use('/esp32_cam', express.static(path.join(__dirname, 'esp32_cam')));
 
@@ -18,16 +19,18 @@ app.get('/', (req, res) => {
 });
 
 // ---------------------------------------------------------------------
-// STATE MANAGEMENT (ESP8266 + ESP32-CAM + SENSORS + PUMP)
+// STATE MANAGEMENT (ESP32 + ESP32-CAM + SENSORS + PUMP)
 // ---------------------------------------------------------------------
 let systemState = {
-  esp8266: {
+  esp32: {
     connected: true,
     lastSeen: new Date().toISOString(),
     ipAddress: '192.168.1.105',
-    firmwareVersion: 'v2.4.1-esp8266',
-    rssi: -58
+    firmwareVersion: 'v3.1.0-esp32',
+    chipModel: 'ESP32 DevKit V1 (Dual-Core 240MHz)',
+    rssi: -54
   },
+  esp8266: null, // Initialized as alias below for backward-compatibility
   esp32cam: {
     connected: true,
     ipAddress: '192.168.1.150',
@@ -63,6 +66,9 @@ let systemState = {
   alerts: [],
   snapshots: []
 };
+
+// Backward-compatibility alias
+systemState.esp8266 = systemState.esp32;
 
 // Seed initial history
 const now = Date.now();
@@ -102,7 +108,7 @@ const DISEASE_DATABASE = [
       day7: 'Apply seaweed extract foliar spray (2ml/L) + Zinc-Boron micronutrients to rebuild lush green canopy.'
     },
     preventionTips: [
-      'Shift strictly to drip irrigation via the connected ESP8266 controller. Never wet leaves from above.',
+      'Shift strictly to drip irrigation via the connected ESP32 controller. Never wet leaves from above.',
       'Maintain 2.5 ft plant spacing for continuous airflow.',
       'Cover soil with straw or silver-black mulch to prevent soil spores splashing up during rain.'
     ]
@@ -224,7 +230,7 @@ const DISEASE_DATABASE = [
       day7: 'Spray Zinc EDTA 12% (1g/L) to strengthen immunity.'
     },
     preventionTips: [
-      'Maintain adequate soil moisture via ESP8266 controlled irrigation.',
+      'Maintain adequate soil moisture via ESP32 controlled irrigation.',
       'Correct soil micronutrient deficiencies using organic vermicompost.'
     ]
   },
@@ -435,7 +441,10 @@ function addAlert(type, message) {
   if (systemState.alerts.length > 30) systemState.alerts.pop();
 }
 
-app.post('/api/esp8266/telemetry', (req, res) => {
+// ---------------------------------------------------------------------
+// 1. ESP32 & ESP8266 SENSOR TELEMETRY & AUTOMATED PUMP CONTROLLER
+// ---------------------------------------------------------------------
+function handleSensorTelemetry(req, res) {
   const { temperature, humidity, soilMoisture, flame, soilRaw, ip } = req.body;
 
   if (temperature !== undefined) systemState.sensors.temperature = parseFloat(temperature);
@@ -449,12 +458,12 @@ app.post('/api/esp8266/telemetry', (req, res) => {
   systemState.sensors.flameRawValue = flameVal ? 1 : 0;
 
   systemState.sensors.lastUpdated = new Date().toISOString();
-  systemState.esp8266.lastSeen = new Date().toISOString();
-  systemState.esp8266.connected = true;
-  if (ip) systemState.esp8266.ipAddress = ip;
+  systemState.esp32.lastSeen = new Date().toISOString();
+  systemState.esp32.connected = true;
+  if (ip) systemState.esp32.ipAddress = ip;
 
   if (flameVal && !prevFlame) {
-    addAlert('danger', '🔥 FIRE HAZARD DETECTED: Flame sensor (GPIO 14) triggered emergency alert!');
+    addAlert('danger', '🔥 FIRE HAZARD DETECTED: Flame sensor (GPIO 15) triggered emergency alert!');
   }
 
   evaluatePumpAutomation();
@@ -475,6 +484,7 @@ app.post('/api/esp8266/telemetry', (req, res) => {
 
   res.json({
     status: 'success',
+    node: 'ESP32',
     timestamp: new Date().toISOString(),
     pumpControl: {
       relayState: systemState.pump.state ? 1 : 0,
@@ -482,9 +492,12 @@ app.post('/api/esp8266/telemetry', (req, res) => {
       pumpStateText: systemState.pump.state ? 'ON' : 'OFF'
     }
   });
-});
+}
 
-app.get('/api/esp8266/update', (req, res) => {
+app.post('/api/esp32/telemetry', handleSensorTelemetry);
+app.post('/api/esp8266/telemetry', handleSensorTelemetry);
+
+function handleSensorUpdate(req, res) {
   const { temp, hum, soil, flame, raw } = req.query;
   if (temp) systemState.sensors.temperature = parseFloat(temp);
   if (hum) systemState.sensors.humidity = parseFloat(hum);
@@ -495,25 +508,40 @@ app.get('/api/esp8266/update', (req, res) => {
   systemState.sensors.flameDetected = flameVal;
   systemState.sensors.flameRawValue = flameVal ? 1 : 0;
   systemState.sensors.lastUpdated = new Date().toISOString();
-  systemState.esp8266.lastSeen = new Date().toISOString();
-  systemState.esp8266.connected = true;
+  systemState.esp32.lastSeen = new Date().toISOString();
+  systemState.esp32.connected = true;
 
   evaluatePumpAutomation();
 
   res.json({
     pump: systemState.pump.state ? 1 : 0,
     mode: systemState.pump.mode,
+    node: 'ESP32',
     msg: 'ACK'
   });
-});
+}
 
-app.get('/api/esp8266/pump-status', (req, res) => {
-  systemState.esp8266.lastSeen = new Date().toISOString();
+app.get('/api/esp32/update', handleSensorUpdate);
+app.get('/api/esp8266/update', handleSensorUpdate);
+
+function handlePumpStatus(req, res) {
+  systemState.esp32.lastSeen = new Date().toISOString();
   res.json({
     pumpState: systemState.pump.state ? 'ON' : 'OFF',
     relayPinState: systemState.pump.state ? 1 : 0,
-    mode: systemState.pump.mode
+    mode: systemState.pump.mode,
+    node: 'ESP32'
   });
+}
+
+app.get('/api/esp32/pump-status', handlePumpStatus);
+app.get('/api/esp8266/pump-status', handlePumpStatus);
+
+app.get('/api/esp32/status', (req, res) => {
+  res.json({ success: true, esp32: systemState.esp32 });
+});
+app.get('/api/esp8266/status', (req, res) => {
+  res.json({ success: true, esp8266: systemState.esp32 });
 });
 
 app.get('/api/system/status', (req, res) => {
@@ -876,7 +904,7 @@ app.listen(PORT, () => {
   console.log(`=======================================================`);
   console.log(`🌾 AgriSmart IoT Agriculture Monitoring Server Running!`);
   console.log(`📡 Webpage Portal      : http://localhost:${PORT}`);
-  console.log(`🔌 ESP8266 Telemetry   : http://localhost:${PORT}/api/esp8266/telemetry`);
+  console.log(`🔌 ESP32 Telemetry    : http://localhost:${PORT}/api/esp32/telemetry`);
   console.log(`📷 ESP32-CAM Endpoint  : http://localhost:${PORT}/api/esp32cam/status`);
   console.log(`=======================================================`);
 });

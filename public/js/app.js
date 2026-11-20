@@ -46,7 +46,7 @@ function initAuth() {
     tabFarmer.className = 'flex-1 py-1.5 rounded-lg font-medium text-center transition bg-brand-600 text-white shadow';
     tabGuest.className = 'flex-1 py-1.5 rounded-lg font-medium text-center transition text-slate-400 hover:text-white';
     loginEmail.value = 'farmer@agrismart.com';
-    loginPass.value = 'esp8266farm';
+    loginPass.value = 'esp32farm';
   });
 
   tabGuest?.addEventListener('click', () => {
@@ -125,11 +125,11 @@ function initNavigation() {
   };
 
   const titles = {
-    dashboard: { title: 'Agriculture Field Dashboard', subtitle: 'Real-time ESP8266 telemetry, soil condition & water pump automation', icon: 'fa-chart-pie', color: 'text-brand-400' },
+    dashboard: { title: 'Agriculture Field Dashboard', subtitle: 'Real-time ESP32 telemetry, soil condition & water pump automation', icon: 'fa-chart-pie', color: 'text-brand-400' },
     disease: { title: 'Plant Disease AI Diagnostic Monitor', subtitle: 'Leaf disease identification, pathogen analysis & chemical/organic treatments', icon: 'fa-microscope', color: 'text-emerald-400' },
     surveillance: { title: 'Field Video & Surveillance System', subtitle: 'Live agricultural video feed, PTZ controls and snapshot captures', icon: 'fa-video', color: 'text-blue-400' },
     weather: { title: '10-Day Detailed Agriculture Weather', subtitle: 'High/Low temperatures, precipitation probability, humidity & irrigation advisories', icon: 'fa-cloud-sun-rain', color: 'text-amber-400' },
-    hardware: { title: 'ESP8266 Circuit & Firmware Guide', subtitle: 'Wiring schematics, pinout assignments and complete Arduino sketch', icon: 'fa-microchip', color: 'text-purple-400' }
+    hardware: { title: 'ESP32 Circuit & Firmware Guide', subtitle: 'Wiring schematics, pinout assignments and complete Arduino sketch', icon: 'fa-microchip', color: 'text-purple-400' }
   };
 
   navButtons.forEach(btn => {
@@ -225,7 +225,8 @@ async function pollSystemStatus() {
 }
 
 function updateDashboardUI(data) {
-  const { sensors, pump, esp8266, history, alerts } = data;
+  const { sensors, pump, esp32, esp8266, history, alerts } = data;
+  const espNode = esp32 || esp8266 || {};
 
   // 1. Temperature Card
   const tempVal = document.getElementById('tempValue');
@@ -367,12 +368,12 @@ function updateDashboardUI(data) {
     pumpModeAutoBtn?.classList.add('text-slate-400');
   }
 
-  // 6. ESP8266 Hardware Status Widget
+  // 6. ESP32 Hardware Status Widget
   const espStatusBadge = document.getElementById('espStatusBadge');
   const espIpDisplay = document.getElementById('espIpDisplay');
   const espRssiDisplay = document.getElementById('espRssiDisplay');
   if (espStatusBadge) {
-    if (esp8266.connected) {
+    if (espNode.connected) {
       espStatusBadge.className = 'inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
       espStatusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> ONLINE';
     } else {
@@ -380,8 +381,8 @@ function updateDashboardUI(data) {
       espStatusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> STANDBY';
     }
   }
-  if (espIpDisplay) espIpDisplay.textContent = esp8266.ipAddress || '192.168.1.105';
-  if (espRssiDisplay) espRssiDisplay.textContent = `${esp8266.rssi || -58} dBm`;
+  if (espIpDisplay) espIpDisplay.textContent = espNode.ipAddress || '192.168.1.105';
+  if (espRssiDisplay) espRssiDisplay.textContent = `${espNode.rssi || -54} dBm`;
 
   // 7. Render Alerts Log
   renderAlerts(alerts);
@@ -727,33 +728,33 @@ function initSimulatorDrawer() {
 // 7. ARDUINO FIRMWARE VIEWER & COPY (ESP8266 & ESP32-CAM)
 // --------------------------------------------------------------------------
 
-let currentFirmwareType = 'esp8266';
-const cachedCode = { esp8266: '', esp32cam: '' };
+let currentFirmwareType = 'esp32';
+const cachedCode = { esp32: '', esp32cam: '' };
 
-async function loadArduinoCode(type = 'esp8266') {
+async function loadArduinoCode(type = 'esp32') {
   currentFirmwareType = type;
   const codeBlock = document.getElementById('arduinoCodeBlock');
   const copyBtn = document.getElementById('copyArduinoCodeBtn');
   const titleDisplay = document.getElementById('codeFileNameDisplay');
   const downloadLink = document.getElementById('downloadCodeLink');
-  const tab8266 = document.getElementById('tabCodeEsp8266');
-  const tab32 = document.getElementById('tabCodeEsp32Cam');
+  const tab32Node = document.getElementById('tabCodeEsp32') || document.getElementById('tabCodeEsp8266');
+  const tabCam = document.getElementById('tabCodeEsp32Cam');
 
-  if (type === 'esp8266') {
-    tab8266?.classList.add('bg-purple-600', 'text-white');
-    tab8266?.classList.remove('bg-slate-800', 'text-slate-400');
-    tab32?.classList.remove('bg-purple-600', 'text-white');
-    tab32?.classList.add('bg-slate-800', 'text-slate-400');
-    if (titleDisplay) titleDisplay.textContent = 'esp8266_agriculture.ino (Sensors & Pump)';
+  if (type === 'esp32' || type === 'esp8266') {
+    tab32Node?.classList.add('bg-purple-600', 'text-white');
+    tab32Node?.classList.remove('bg-slate-800', 'text-slate-400');
+    tabCam?.classList.remove('bg-purple-600', 'text-white');
+    tabCam?.classList.add('bg-slate-800', 'text-slate-400');
+    if (titleDisplay) titleDisplay.textContent = 'esp32_agriculture.ino (Sensors & Pump)';
     if (downloadLink) {
-      downloadLink.href = '/esp8266_code/esp8266_agriculture.ino';
-      downloadLink.download = 'esp8266_agriculture.ino';
+      downloadLink.href = '/esp32_code/esp32_agriculture.ino';
+      downloadLink.download = 'esp32_agriculture.ino';
     }
   } else {
-    tab32?.classList.add('bg-purple-600', 'text-white');
-    tab32?.classList.remove('bg-slate-800', 'text-slate-400');
-    tab8266?.classList.remove('bg-purple-600', 'text-white');
-    tab8266?.classList.add('bg-slate-800', 'text-slate-400');
+    tabCam?.classList.add('bg-purple-600', 'text-white');
+    tabCam?.classList.remove('bg-slate-800', 'text-slate-400');
+    tab32Node?.classList.remove('bg-purple-600', 'text-white');
+    tab32Node?.classList.add('bg-slate-800', 'text-slate-400');
     if (titleDisplay) titleDisplay.textContent = 'esp32_cam_firmware.ino (AI-Thinker Video Stream)';
     if (downloadLink) {
       downloadLink.href = '/esp32_cam/esp32_cam_firmware.ino';
@@ -761,18 +762,19 @@ async function loadArduinoCode(type = 'esp8266') {
     }
   }
 
-  if (cachedCode[type]) {
-    if (codeBlock) codeBlock.textContent = cachedCode[type];
+  const cacheKey = type === 'esp32cam' ? 'esp32cam' : 'esp32';
+  if (cachedCode[cacheKey]) {
+    if (codeBlock) codeBlock.textContent = cachedCode[cacheKey];
     return;
   }
 
-  const url = type === 'esp8266' ? '/esp8266_code/esp8266_agriculture.ino' : '/esp32_cam/esp32_cam_firmware.ino';
+  const url = (type === 'esp32' || type === 'esp8266') ? '/esp32_code/esp32_agriculture.ino' : '/esp32_cam/esp32_cam_firmware.ino';
 
   try {
     const res = await fetch(url);
     if (res.ok) {
       const code = await res.text();
-      cachedCode[type] = code;
+      cachedCode[cacheKey] = code;
       if (codeBlock) codeBlock.textContent = code;
     }
   } catch (e) {
@@ -781,12 +783,14 @@ async function loadArduinoCode(type = 'esp8266') {
 }
 
 function initFirmwareTabs() {
-  document.getElementById('tabCodeEsp8266')?.addEventListener('click', () => loadArduinoCode('esp8266'));
+  document.getElementById('tabCodeEsp32')?.addEventListener('click', () => loadArduinoCode('esp32'));
+  document.getElementById('tabCodeEsp8266')?.addEventListener('click', () => loadArduinoCode('esp32'));
   document.getElementById('tabCodeEsp32Cam')?.addEventListener('click', () => loadArduinoCode('esp32cam'));
 
   const copyBtn = document.getElementById('copyArduinoCodeBtn');
   copyBtn?.addEventListener('click', () => {
-    const code = cachedCode[currentFirmwareType] || document.getElementById('arduinoCodeBlock')?.textContent;
+    const cacheKey = currentFirmwareType === 'esp32cam' ? 'esp32cam' : 'esp32';
+    const code = cachedCode[cacheKey] || document.getElementById('arduinoCodeBlock')?.textContent;
     if (code) {
       navigator.clipboard.writeText(code).then(() => {
         copyBtn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> Copied!';
