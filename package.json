@@ -14,7 +14,8 @@
   "keywords": [
     "agriculture",
     "iot",
-    "esp8266",
+    "esp32",
+    "esp32-devkit",
     "esp32-cam",
     "smart-farming"
   ],

@@ -1,6 +1,6 @@
 /**
  * AgriSmart IoT Application Core
- * Handles Authentication, Navigation, Live ESP8266 Polling,
+ * Handles Authentication, Navigation, Live ESP32 Polling,
  * Pump Control, Audio Siren Synthesizer, and Hardware Simulation.
  */
 
@@ -208,7 +208,7 @@ function initNavigation() {
 }
 
 // --------------------------------------------------------------------------
-// 3. REAL-TIME ESP8266 SENSOR POLLING & DASHBOARD UI UPDATE
+// 3. REAL-TIME ESP32 SENSOR POLLING & DASHBOARD UI UPDATE
 // --------------------------------------------------------------------------
 
 async function pollSystemStatus() {
@@ -225,8 +225,8 @@ async function pollSystemStatus() {
 }
 
 function updateDashboardUI(data) {
-  const { sensors, pump, esp32, esp8266, history, alerts } = data;
-  const espNode = esp32 || esp8266 || {};
+  const { sensors, pump, esp32, history, alerts } = data;
+  const espNode = esp32 || {};
 
   // 1. Temperature Card
   const tempVal = document.getElementById('tempValue');
@@ -725,7 +725,7 @@ function initSimulatorDrawer() {
 }
 
 // --------------------------------------------------------------------------
-// 7. ARDUINO FIRMWARE VIEWER & COPY (ESP8266 & ESP32-CAM)
+// 7. ARDUINO FIRMWARE VIEWER & COPY (ESP32 & ESP32-CAM)
 // --------------------------------------------------------------------------
 
 let currentFirmwareType = 'esp32';
@@ -737,10 +737,10 @@ async function loadArduinoCode(type = 'esp32') {
   const copyBtn = document.getElementById('copyArduinoCodeBtn');
   const titleDisplay = document.getElementById('codeFileNameDisplay');
   const downloadLink = document.getElementById('downloadCodeLink');
-  const tab32Node = document.getElementById('tabCodeEsp32') || document.getElementById('tabCodeEsp8266');
+  const tab32Node = document.getElementById('tabCodeEsp32');
   const tabCam = document.getElementById('tabCodeEsp32Cam');
 
-  if (type === 'esp32' || type === 'esp8266') {
+  if (type === 'esp32') {
     tab32Node?.classList.add('bg-purple-600', 'text-white');
     tab32Node?.classList.remove('bg-slate-800', 'text-slate-400');
     tabCam?.classList.remove('bg-purple-600', 'text-white');
@@ -768,7 +768,7 @@ async function loadArduinoCode(type = 'esp32') {
     return;
   }
 
-  const url = (type === 'esp32' || type === 'esp8266') ? '/esp32_code/esp32_agriculture.ino' : '/esp32_cam/esp32_cam_firmware.ino';
+  const url = type === 'esp32' ? '/esp32_code/esp32_agriculture.ino' : '/esp32_cam/esp32_cam_firmware.ino';
 
   try {
     const res = await fetch(url);
@@ -784,7 +784,6 @@ async function loadArduinoCode(type = 'esp32') {
 
 function initFirmwareTabs() {
   document.getElementById('tabCodeEsp32')?.addEventListener('click', () => loadArduinoCode('esp32'));
-  document.getElementById('tabCodeEsp8266')?.addEventListener('click', () => loadArduinoCode('esp32'));
   document.getElementById('tabCodeEsp32Cam')?.addEventListener('click', () => loadArduinoCode('esp32cam'));
 
   const copyBtn = document.getElementById('copyArduinoCodeBtn');

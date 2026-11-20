@@ -3,7 +3,7 @@
  * Features:
  * - High-accuracy multi-crop pathogen recognition
  * - Lesion Heatmap & Reticle Visual Overlay on user photos
- * - Plain-language farmer summaries with exact 15L tank recipes
+ * - Plain-language farmer summ``xaries with exact 15L tank recipes
  * - Audio Voice Doctor for Farmers (Bilingual SpeechSynthesis)
  * - 3-Day recovery schedule & organic natural alternatives
  */
@@ -272,7 +272,7 @@ window.DiseaseModule = (function () {
       });
 
       const data = await res.json();
-      
+
       setTimeout(() => {
         scanLine?.remove();
         loadingState?.classList.add('hidden');

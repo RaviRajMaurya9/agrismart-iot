@@ -303,7 +303,7 @@ const DISEASE_DATABASE = [
     },
     preventionTips: [
       'Use certified seed treated with Thiram (3g/kg).',
-      'Never allow standing water near roots; use drip irrigation via ESP8266 controller.'
+      'Never allow standing water near roots; use drip irrigation via ESP32 controller.'
     ]
   },
   {
@@ -389,7 +389,7 @@ const DISEASE_DATABASE = [
     confidenceRange: [98, 99.9],
     farmerSummary: 'Congratulations! Your plant shows deep green leaf color, intact cuticle, crisp leaf margins, and robust turgor pressure. No fungal, bacterial, or viral disease found.',
     symptoms: 'Vibrant green chlorophyll distribution, clean veins, absence of necrotic spots, zero viral curling or pest webbing.',
-    causes: 'Balanced soil moisture, optimal N-P-K nutrient uptake, and clean microclimate monitoring via your ESP8266 station.',
+    causes: 'Balanced soil moisture, optimal N-P-K nutrient uptake, and clean microclimate monitoring via your ESP32 station.',
     immediateSprayRecipe: 'No chemical fungicide needed! Keep leaves clean and maintain steady automated irrigation.',
     organicHomeRemedy: 'Prophylactic foliar spray of Seaweed extract (2ml/L) or Panchagavya (3%) every 14 days to sustain vigorous growth.',
     recoveryPlan: {
@@ -398,14 +398,14 @@ const DISEASE_DATABASE = [
       day7: 'Check 10-day weather forecast before scheduling weekly organic nutrition.'
     },
     preventionTips: [
-      'Keep using the ESP8266 auto-pump system to avoid over-irrigation.',
+      'Keep using the ESP32 auto-pump system to avoid over-irrigation.',
       'Regular scouting keeps your farm clean and high-yielding!'
     ]
   }
 ];
 
 // ---------------------------------------------------------------------
-// 1. ESP8266 TELEMETRY & PUMP AUTOMATION
+// 1. ESP32 TELEMETRY & PUMP AUTOMATION
 // ---------------------------------------------------------------------
 function evaluatePumpAutomation() {
   if (systemState.sensors.flameDetected && systemState.pump.emergencyFlameCutoff) {
@@ -442,7 +442,7 @@ function addAlert(type, message) {
 }
 
 // ---------------------------------------------------------------------
-// 1. ESP32 & ESP8266 SENSOR TELEMETRY & AUTOMATED PUMP CONTROLLER
+// 1. ESP32 SENSOR TELEMETRY & AUTOMATED PUMP CONTROLLER
 // ---------------------------------------------------------------------
 function handleSensorTelemetry(req, res) {
   const { temperature, humidity, soilMoisture, flame, soilRaw, ip } = req.body;
